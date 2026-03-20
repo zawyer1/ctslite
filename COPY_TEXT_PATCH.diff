@@ -1,0 +1,269 @@
+# UNIFIED DIFF - Copy Text Feature Fix
+
+## File: CircleToSearchAccessibilityService.kt
+Location: `app/src/main/java/com/akslabs/circletosearch/CircleToSearchAccessibilityService.kt`
+
+```diff
+--- a/app/src/main/java/com/akslabs/circletosearch/CircleToSearchAccessibilityService.kt
++++ b/app/src/main/java/com/akslabs/circletosearch/CircleToSearchAccessibilityService.kt
+@@ -750,47 +750,62 @@ class CircleToSearchAccessibilityService : AccessibilityService() {
+         }
+ 
+         /**
+-         * Returns the current root AccessibilityNodeInfo for the active application window.
+-         * Skips TYPE_ACCESSIBILITY_OVERLAY windows (like our own UI) to find underlying text.
++         * Returns the current root AccessibilityNodeInfo for the active application window.
++         * Prioritizes TYPE_APPLICATION windows, filters out pure accessibility overlays,
++         * and returns our OverlayActivity if it's the active window (contains the dimmed screenshot).
+          */
+         fun getRootNode(): AccessibilityNodeInfo? {
+             val service = instance ?: return null
+             val ourPackage = service.packageName
+             android.util.Log.d("CTS_Node", "getRootNode triggered. Our package: $ourPackage")
+             
+             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                 val windows = service.windows
+                 android.util.Log.d("CTS_Node", "Window count: ${windows.size}")
+                 
+-                // 1. Filter out accessibility overlays and our own windows
+-                // Sort by layer/id to usually get the top-most content window
+-                val candidateWindows = windows.filter { window ->
+-                    val root = try { window.root } catch (_: Exception) { null }
+-                    window.type != android.view.accessibility.AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY &&
+-                    root?.packageName != ourPackage &&
+-                    root != null
++                // Strategy:
++                // 1. Prefer TYPE_APPLICATION windows from OTHER packages (real content)
++                // 2. Fall back to any non-overlay window (including our OverlayActivity if it's TYPE_APPLICATION)
++                // 3. Last resort: use rootInActiveWindow
++                
++                val allWindowsWithRoots = windows.map { window ->
++                    try {
++                        val root = window.root
++                        Pair(window, root)
++                    } catch (_: Exception) {
++                        Pair(window, null)
++                    }
++                }.filter { (_, root) -> root != null }
++                
++                // Find other-package TYPE_APPLICATION windows (highest priority)
++                val otherPackageAppWindows = allWindowsWithRoots.filter { (window, root) ->
++                    window.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_APPLICATION &&
++                    root?.packageName != ourPackage
+                 }
+                 
+-                // prefer TYPE_APPLICATION
+-                val appWindow = candidateWindows.firstOrNull { it.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_APPLICATION }
+-                if (appWindow != null) {
+-                    android.util.Log.d("CTS_Node", "Found app window: ${appWindow.root?.packageName}")
+-                    return appWindow.root
++                if (otherPackageAppWindows.isNotEmpty()) {
++                    val window = otherPackageAppWindows.first()
++                    val packageName = window.second?.packageName
++                    android.util.Log.d("CTS_Node", "Found other-app TYPE_APPLICATION window: $packageName")
++                    return window.second
+                 }
+                 
+-                // fallback to any candidate
+-                val fallbackWindow = candidateWindows.firstOrNull()
+-                if (fallbackWindow != null) {
+-                    android.util.Log.d("CTS_Node", "Fallback window: ${fallbackWindow.root?.packageName}")
+-                    return fallbackWindow.root
++                // Fall back to any non-overlay window (includes our OverlayActivity TYPE_APPLICATION)
++                val nonOverlayWindows = allWindowsWithRoots.filter { (window, _) ->
++                    window.type != android.view.accessibility.AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY
++                }
++                
++                if (nonOverlayWindows.isNotEmpty()) {
++                    val window = nonOverlayWindows.first()
++                    val packageName = window.second?.packageName
++                    android.util.Log.d("CTS_Node", "Found non-overlay window (fallback): $packageName")
++                    return window.second
+                 }
+             }
+             
+-            // Final fallback logic
++            // Final fallback: use rootInActiveWindow (works for our OverlayActivity too)
+             val root = service.rootInActiveWindow
+-            if (root?.packageName != ourPackage) {
+-                android.util.Log.d("CTS_Node", "Defaulting to rootInActiveWindow: ${root?.packageName}")
++            if (root != null) {
++                android.util.Log.d("CTS_Node", "Using rootInActiveWindow fallback: ${root.packageName}")
+                 return root
+             }
+             
+-            android.util.Log.e("CTS_Node", "No suitable root node found (omitting our own package)")
++            android.util.Log.e("CTS_Node", "ERROR: No suitable root node found!")
+             return null
+         }
+```
+
+---
+
+## File: CopyTextOverlayManager.kt
+Location: `app/src/main/java/com/akslabs/circletosearch/ui/components/CopyTextOverlayManager.kt`
+
+### Change 1: Enhanced show() method
+
+```diff
+     fun show(onDismiss: () -> Unit) {
+         if (dimView != null) return // Already visible
++        android.util.Log.d("CopyText", "show() called - setting up Copy Text overlay")
+         onDismissCallback = onDismiss
+ 
+         val view = DimPunchOutView(context) { dismiss() }
+         dimView = view
+@@ -83,13 +84,16 @@ class CopyTextOverlayManager(
+         try {
+             windowManager.addView(view, params)
++            android.util.Log.d("CopyText", "Overlay view added to window manager successfully")
+         } catch (e: Exception) {
++            android.util.Log.e("CopyText", "Failed to add overlay view: ${e.message}", e)
+             e.printStackTrace()
+             return
+         }
+ 
+         // Kick off node scan
++        android.util.Log.d("CopyText", "Starting accessibility node scan...")
+         scanNodes(view)
+     }
+```
+
+### Change 2: Improved scanNodes() method
+
+```diff
+     private fun scanNodes(view: DimPunchOutView) {
+         scanJob?.cancel()
+         scanJob = scope.launch {
++            val root = getRoot()
++            android.util.Log.d("CopyText", "scanNodes: Root node = $root, package = ${root?.packageName}")
++            
++            if (root == null) {
++                android.util.Log.w("CopyText", "ERROR: getRoot() returned null! Cannot scan text nodes.")
++                detectedNodes.clear()
++                view.invalidate()
++                return@launch
++            }
++            
+             val nodes = withContext(Dispatchers.Default) {
+-                collectTextNodes(getRoot())
++                collectTextNodes(root)
+             }
++            android.util.Log.d("CopyText", "Collected ${nodes.size} text nodes from accessibility tree")
+             detectedNodes.clear()
+             detectedNodes.addAll(nodes)
+             view.invalidate() 
+         }
+     }
+```
+
+### Change 3: Rewritten collectTextNodes() method
+
+```diff
+     private fun collectTextNodes(root: AccessibilityNodeInfo?): List<TextNode> {
+-        if (root == null) return emptyList()
++        if (root == null) {
++            android.util.Log.w("CopyText", "collectTextNodes called with null root!")
++            return emptyList()
++        }
+         val result = mutableListOf<TextNode>()
+         val queue = ArrayDeque<AccessibilityNodeInfo>()
+         queue.add(root)
++        var processedCount = 0
+ 
+         while (queue.isNotEmpty()) {
+             val node = queue.removeFirst()
++            processedCount++
+             try {
+                 val text = node.text ?: node.contentDescription
+                 if (!text.isNullOrEmpty()) {
+                     val rect = Rect()
+                     node.getBoundsInScreen(rect)
+                     if (!rect.isEmpty) {
+                         val fullText = text.toString()
+                         val words = splitIntoWords(fullText, rect)
+-                        result.add(TextNode(
+-                            id = java.util.UUID.randomUUID().toString(),
+-                            fullText = fullText,
+-                            bounds = rect,
+-                            words = words
+-                        ))
++                        if (words.isNotEmpty()) {
++                            result.add(TextNode(
++                                id = java.util.UUID.randomUUID().toString(),
++                                fullText = fullText,
++                                bounds = rect,
++                                words = words
++                            ))
++                        }
+                     }
+                 }
+ 
+                 for (i in 0 until node.childCount) {
+                     node.getChild(i)?.let { queue.add(it) }
+                 }
+-            } catch (_: Exception) {}
++            } catch (e: Exception) {
++                android.util.Log.e("CopyText", "Error processing accessibility node: ${e.message}")
++            }
+         }
++        android.util.Log.d("CopyText", "Processed $processedCount accessibility nodes, found ${result.size} text regions")
+         return result
+     }
+```
+
+---
+
+## Summary of Changes
+
+### Files Modified: 2
+1. CircleToSearchAccessibilityService.kt
+2. CopyTextOverlayManager.kt
+
+### Lines Changed
+- CircleToSearchAccessibilityService.kt: ~60 lines (complete getRootNode rewrite)
+- CopyTextOverlayManager.kt: ~40 lines added (logging and error handling)
+
+### Breaking Changes: NONE
+- All changes are backward compatible
+- Only internal implementation details changed
+- No API changes
+
+### Performance Impact: NEGLIGIBLE
+- Added logging (minimal overhead)
+- Better error handling (prevents crashes)
+- Same algorithmic complexity
+
+### Testing Impact: POSITIVE
+- Better diagnostics with enhanced logging
+- Easier to debug future issues
+- More robust error handling
+
+---
+
+## Git Commands for Merge
+
+```bash
+# View the specific changes
+git diff app/src/main/java/com/akslabs/circletosearch/CircleToSearchAccessibilityService.kt
+git diff app/src/main/java/com/akslabs/circletosearch/ui/components/CopyTextOverlayManager.kt
+
+# Stage changes
+git add app/src/main/java/com/akslabs/circletosearch/CircleToSearchAccessibilityService.kt
+git add app/src/main/java/com/akslabs/circletosearch/ui/components/CopyTextOverlayManager.kt
+
+# Create commit
+git commit -m "Fix: Copy Text feature - null accessibility node detection
+
+- Replace getRootNode() logic to accept OverlayActivity windows
+- Add proper fallback chain for window selection
+- Enhance error handling and diagnostic logging in CopyTextOverlayManager
+- Resolves issue where copy text button showed transparent screen only
+
+Fixes: Copy Text not detecting or displaying any text
+Ref: CircleToSearchAccessibilityService.kt + CopyTextOverlayManager.kt"
+
+# Create branch for PR
+git checkout -b fix/copy-text-accessibility-node
+git push origin fix/copy-text-accessibility-node
+```

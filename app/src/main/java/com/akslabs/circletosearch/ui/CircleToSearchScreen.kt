@@ -154,12 +154,14 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import android.os.Build
+import androidx.compose.material3.Surface
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CircleToSearchScreen(
     screenshot: Bitmap?,
     onClose: () -> Unit,
+    copyTextManager: com.akslabs.circletosearch.ui.components.CopyTextOverlayManager? = null,
     onCopyText: () -> Unit = {},
     onExitCopyMode: () -> Unit = {}
 ) {
@@ -463,21 +465,26 @@ fun CircleToSearchScreen(
         }
     }
 
-    androidx.compose.material3.BottomSheetScaffold(
-        scaffoldState = scaffoldState,
-        sheetPeekHeight = (androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.dp * 0.55f), // Dynamic 55% peek
-        sheetContainerColor = Color.Transparent,
-        sheetContentColor = MaterialTheme.colorScheme.onSurface,
-        sheetDragHandle = { BottomSheetDefaults.DragHandle() },
-        sheetSwipeEnabled = true,
-        sheetContent = {
-            // Bottom Sheet Content (Results)
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(800.dp)
-                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
-            ) {
+    Surface(
+        color = Color.Transparent,
+        tonalElevation = 0.dp
+    ) {
+        androidx.compose.material3.BottomSheetScaffold(
+            scaffoldState = scaffoldState,
+            sheetPeekHeight = (androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.dp * 0.55f), // Dynamic 55% peek
+            containerColor = Color.Transparent,
+            sheetContainerColor = Color.Transparent,
+            sheetContentColor = MaterialTheme.colorScheme.onSurface,
+            sheetDragHandle = { BottomSheetDefaults.DragHandle() },
+            sheetSwipeEnabled = true,
+            sheetContent = {
+                // Bottom Sheet Content (Results)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(800.dp)
+                        .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+                ) {
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 // Tabs - Polished UI
@@ -1390,14 +1397,20 @@ fun CircleToSearchScreen(
                 }
             }
 
-            // Copy Text overlay activation
-            LaunchedEffect(isCopyTextTriggered) {
-                if (isCopyTextTriggered) {
-                    onCopyText()
-                    isCopyTextTriggered = false
-                }
+            // Copy Text overlay integration (Activity-based)
+            if (isCopyMode && copyTextManager != null) {
+                AndroidView(
+                    factory = { ctx ->
+                        copyTextManager.getOverlayView(onDismiss = {
+                            isCopyMode = false
+                            onExitCopyMode()
+                        })
+                    },
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .zIndex(150f)
+                )
             }
-
         
         if (showSupportSheet) {
             com.akslabs.circletosearch.SupportSheet(
@@ -1420,8 +1433,8 @@ fun CircleToSearchScreen(
                 onDismissRequest = { showSettingsScreen = false }
             )
         }
-
     }
+}
 }
 }
 

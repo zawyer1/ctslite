@@ -1,0 +1,88 @@
+> Task :app:clean
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:processDebugNavigationResources
+> Task :app:compileDebugNavigationResources
+> Task :app:generateDebugResValues
+> Task :app:checkDebugAarMetadata
+> Task :app:mapDebugSourceSetPaths
+> Task :app:generateDebugResources
+> Task :app:packageDebugResources
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug
+> Task :app:parseDebugLocalResources
+> Task :app:mergeDebugResources
+> Task :app:processDebugMainManifest
+> Task :app:processDebugManifest
+> Task :app:javaPreCompileDebug
+> Task :app:mergeDebugShaders
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets
+> Task :app:desugarDebugFileDependencies
+> Task :app:mergeDebugJniLibFolders
+> Task :app:validateSigningDebug
+> Task :app:writeDebugAppMetadata
+> Task :app:checkDebugDuplicateClasses
+> Task :app:writeDebugSigningConfigVersions
+> Task :app:compressDebugAssets
+> Task :app:mergeDebugNativeLibs
+> Task :app:mergeLibDexDebug
+> Task :app:processDebugManifestForPackage
+> Task :app:stripDebugDebugSymbols
+> Task :app:mergeExtDexDebug
+> Task :app:processDebugResources
+> Task :app:compileDebugKotlin
+
+> Task :app:compileDebugKotlin FAILED
+.\gradlew.bat : e: file:///C:/Users/ashin/Androi
+dStudioProjects/CircleToSearch/app/src/main/java
+/com/akslabs/circletosearch/ocr/TesseractEngine.
+kt:105:39 Argument type mismatch: actual type 
+is 'android.graphics.Rect', but 'kotlin.Int' 
+was expected.
+At line:1 char:1
++ .\gradlew.bat clean assembleDebug 
+--console=plain > build_errors.txt  ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (e: 
+fil    e:///C:/U...' was expected.:String) [], 
+RemoteE    xception
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+e: file:///C:/Users/ashin/AndroidStudioProjects/
+CircleToSearch/app/src/main/java/com/akslabs/cir
+cletosearch/ocr/TesseractEngine.kt:105:39 No 
+value passed for parameter 'startIndex'.
+e: file:///C:/Users/ashin/AndroidStudioProjects/
+CircleToSearch/app/src/main/java/com/akslabs/cir
+cletosearch/ocr/TesseractEngine.kt:105:39 No 
+value passed for parameter 'endIndex'.
+e: file:///C:/Users/ashin/AndroidStudioProjects/
+CircleToSearch/app/src/main/java/com/akslabs/cir
+cletosearch/ocr/TesseractEngine.kt:105:39 No 
+value passed for parameter 'bounds'.
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task 
+':app:compileDebugKotlin'.
+> A failure occurred while executing org.jetbrai
+ns.kotlin.compilerRunner.GradleCompilerRunnerWit
+hWorkers$GradleKotlinCompilerWorkAction
+   > Compilation error. See log for more details
+
+* Try:
+> Run with --stacktrace option to get the stack 
+trace.
+> Run with --info or --debug option to get more 
+log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 2m 20s
+31 actionable tasks: 31 executed

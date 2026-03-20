@@ -86,10 +86,13 @@ class CircleToSearchAccessibilityService : AccessibilityService() {
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         configManager = OverlayConfigurationManager(this)
         
-        // Add FLAG_RETRIEVE_INTERACTIVE_WINDOWS at runtime so we can read
         // node info from other windows without touching AndroidManifest.xml.
+        // Also enable enhanced web accessibility for better WebView coverage.
         val info = serviceInfo
-        info.flags = info.flags or android.accessibilityservice.AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
+        info.flags = info.flags or 
+            android.accessibilityservice.AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or
+            android.accessibilityservice.AccessibilityServiceInfo.FLAG_REQUEST_ENHANCED_WEB_ACCESSIBILITY or
+            android.accessibilityservice.AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS
         serviceInfo = info
         
         prefs.registerOnSharedPreferenceChangeListener(prefsListener)
@@ -673,10 +676,6 @@ class CircleToSearchAccessibilityService : AccessibilityService() {
     private fun performCapture() {
         android.util.Log.d("CircleToSearch", "performCapture called. hasWindowManager=${windowManager != null}")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            // Haptic Feedback (Crisp Click) - Moved to performAction, but keeping here specifically for direct calls if any
-             // (performAction handles its own vibration)
-            
-            // Execute immediately for instant trigger
             takeScreenshot(
                 Display.DEFAULT_DISPLAY,
                 executor,
@@ -741,52 +740,14 @@ class CircleToSearchAccessibilityService : AccessibilityService() {
     companion object {
         private var instance: CircleToSearchAccessibilityService? = null
         private var isFlashlightOn = false // Simple static state tracking
+        
+        fun setCopyTextManager(manager: CopyTextOverlayManager?) {
+            instance?.copyTextManager = manager
+        }
 
         fun triggerCapture() {
             android.util.Log.d("CircleToSearch", "triggerCapture static called. instance=${instance != null}")
             instance?.performCapture()
-        }
-
-        /**
-         * Returns the current root AccessibilityNodeInfo for the active application window.
-         * Skips TYPE_ACCESSIBILITY_OVERLAY windows (like our own UI) to find underlying text.
-         */
-        fun getRootNode(): AccessibilityNodeInfo? {
-            val service = instance ?: return null
-            android.util.Log.d("CTS_Node", "getRootNode triggered")
-            
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                val ourPackage = service.packageName
-                val windows = service.windows
-                android.util.Log.d("CTS_Node", "Window count: ${windows.size}")
-                
-                // 1. Try to find the application window that isn't us
-                val appWindow = windows.firstOrNull { window ->
-                    window.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_APPLICATION &&
-                    window.root?.packageName != ourPackage
-                }
-                
-                if (appWindow != null) {
-                    android.util.Log.d("CTS_Node", "Found app window: ${appWindow.root?.packageName}")
-                    return appWindow.root
-                }
-                
-                // 2. Fallback: Find any window that isn't our package
-                val otherWindow = windows.firstOrNull { it.root?.packageName != ourPackage }
-                if (otherWindow != null) {
-                    android.util.Log.d("CTS_Node", "Fallback to other window: ${otherWindow.root?.packageName}")
-                    return otherWindow.root
-                }
-            }
-            
-            android.util.Log.d("CTS_Node", "Defaulting to rootInActiveWindow")
-            return service.rootInActiveWindow
-        }
-
-        /** Allows OverlayActivity to register an active CopyTextOverlayManager
-         * so scroll events can trigger a live re-scan. */
-        fun setCopyTextManager(mgr: CopyTextOverlayManager?) {
-            instance?.copyTextManager = mgr
         }
     }
 
