@@ -1052,56 +1052,63 @@ fun CircleToSearchScreen(
                     val bottomDp = with(density) { bottomPx.toDp() }
                     val widthDp = rightDp - leftDp
                     
+                    // SHARE BUTTON: Positioned in a separate Box for perfect centering
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .zIndex(300f)
+                            .zIndex(1000f) // Keep it well above all overlays
                     ) {
-                        androidx.compose.material3.FilledTonalButton(
-                            onClick = {
-                                if (selectedBitmap != null) {
-                                    scope.launch {
-                                        try {                                             val fileName = "selection_${java.util.UUID.randomUUID()}.png"
-                                            val path = ImageUtils.saveBitmap(context, selectedBitmap!!, fileName)
-                                            val file = java.io.File(path)
-                                            val uri = androidx.core.content.FileProvider.getUriForFile(context, "com.akslabs.circletosearch.fileprovider", file)
-                                            val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply { 
-                                                type = "image/png"
-                                                putExtra(android.content.Intent.EXTRA_STREAM, uri)
-                                                clipData = android.content.ClipData.newRawUri("Selection", uri)
-                                                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                                addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                                            }
-                                            context.startActivity(android.content.Intent.createChooser(shareIntent, "Share Selection").apply { 
-                                                addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK) 
-                                            })
-
-                                        } catch (e: Exception) {
-                                            android.util.Log.e("CircleToSearch", "Failed to share selection", e)
-                                        }
-                                    }
-                                }
-                            },
+                        Box(
                             modifier = Modifier
-                                .align(Alignment.TopStart)
                                 .offset(
-                                    x = leftDp + (widthDp / 2) - 80.dp, // Approximate center
+                                    x = leftDp,
                                     y = if (topPx > 200f) topDp - 64.dp else bottomDp + 16.dp
                                 )
-                                .height(48.dp),
-                            shape = CircleShape,
-                            colors = androidx.compose.material3.ButtonDefaults.filledTonalButtonColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                contentColor = MaterialTheme.colorScheme.onSurface
-                            ),
-                            elevation = androidx.compose.material3.ButtonDefaults.buttonElevation(defaultElevation = 6.dp),                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp)
+                                .width(widthDp),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Text(
-                                "Share", 
-                                style = MaterialTheme.typography.labelLarge.copy(
-                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Normal
+                            androidx.compose.material3.FilledTonalButton(
+                                onClick = {
+                                    if (selectedBitmap != null) {
+                                        scope.launch {
+                                            try {
+                                                val fileName = "selection_${java.util.UUID.randomUUID()}.png"
+                                                val path = ImageUtils.saveBitmap(context, selectedBitmap!!, fileName)
+                                                val file = java.io.File(path)
+                                                val uri = androidx.core.content.FileProvider.getUriForFile(context, "com.akslabs.circletosearch.fileprovider", file)
+                                                val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply { 
+                                                    type = "image/png"
+                                                    putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                                                    clipData = android.content.ClipData.newRawUri("Selection", uri)
+                                                    addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                                    addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                                }
+                                                context.startActivity(android.content.Intent.createChooser(shareIntent, "Share Selection").apply { 
+                                                    addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK) 
+                                                })
+
+                                            } catch (e: Exception) {
+                                                android.util.Log.e("CircleToSearch", "Failed to share selection", e)
+                                            }
+                                        }
+                                    }
+                                },
+                                modifier = Modifier.height(48.dp),
+                                shape = CircleShape,
+                                colors = androidx.compose.material3.ButtonDefaults.filledTonalButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    contentColor = MaterialTheme.colorScheme.onSurface
+                                ),
+                                elevation = androidx.compose.material3.ButtonDefaults.buttonElevation(defaultElevation = 6.dp),
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp)
+                            ) {
+                                Text(
+                                    "Share", 
+                                    style = MaterialTheme.typography.labelLarge.copy(
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Normal
+                                    )
                                 )
-                            )
+                            }
                         }
                     }
                 }

@@ -1,18 +1,18 @@
-e: file:///C:/Users/ashin/AndroidStudioProjects/CircleToSearch/app/src/main/java/com/akslabs/circletosearch/ui/CircleToSearchScreen.kt:257:13 Unresolved reference 'selectionRect'.
+e: file:///C:/Users/ashin/AndroidStudioProjects/CircleToSearch/app/src/main/java/com/akslabs/circletosearch/ui/components/CopyTextOverlayManager.kt:247:42 Unresolved reference 'ToolbarButton'.
 Fix with AI
 
-e: file:///C:/Users/ashin/AndroidStudioProjects/CircleToSearch/app/src/main/java/com/akslabs/circletosearch/ui/CircleToSearchScreen.kt:258:13 Unresolved reference 'selectedBitmap'.
+e: file:///C:/Users/ashin/AndroidStudioProjects/CircleToSearch/app/src/main/java/com/akslabs/circletosearch/ui/components/CopyTextOverlayManager.kt:247:59 Cannot infer type for this parameter. Please specify it explicitly.
 Fix with AI
 
-e: file:///C:/Users/ashin/AndroidStudioProjects/CircleToSearch/app/src/main/java/com/akslabs/circletosearch/ui/CircleToSearchScreen.kt:259:13 Unresolved reference 'isSearching'.
+e: file:///C:/Users/ashin/AndroidStudioProjects/CircleToSearch/app/src/main/java/com/akslabs/circletosearch/ui/components/CopyTextOverlayManager.kt:361:44 Unresolved reference 'ToolbarButton'.
 Fix with AI
 
-e: file:///C:/Users/ashin/AndroidStudioProjects/CircleToSearch/app/src/main/java/com/akslabs/circletosearch/ui/CircleToSearchScreen.kt:260:13 Unresolved reference 'currentPathPoints'.
+e: file:///C:/Users/ashin/AndroidStudioProjects/CircleToSearch/app/src/main/java/com/akslabs/circletosearch/ui/components/CopyTextOverlayManager.kt:373:32 Unresolved reference 'ToolbarButton'.
 Fix with AI
 
-e: file:///C:/Users/ashin/AndroidStudioProjects/CircleToSearch/app/src/main/java/com/akslabs/circletosearch/ui/CircleToSearchScreen.kt:261:13 Unresolved reference 'selectionAnim'.
+e: file:///C:/Users/ashin/AndroidStudioProjects/CircleToSearch/app/src/main/java/com/akslabs/circletosearch/ui/components/CopyTextOverlayManager.kt:385:38 Unresolved reference 'rect'.
 Fix with AI
 
-e: file:///C:/Users/ashin/AndroidStudioProjects/CircleToSearch/app/src/main/java/com/akslabs/circletosearch/ui/CircleToSearchScreen.kt:1048:21 Syntax error: Expecting an expression.
+e: file:///C:/Users/ashin/AndroidStudioProjects/CircleToSearch/app/src/main/java/com/akslabs/circletosearch/ui/components/CopyTextOverlayManager.kt:386:53 Unresolved reference 'label'.
 Fix with AI
 
