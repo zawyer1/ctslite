@@ -60,14 +60,7 @@ object TesseractEngine {
                 return@withContext emptyList()
             }
 
-            val scale = 2f
-            val scaledBitmap = Bitmap.createScaledBitmap(
-                bitmap, 
-                (bitmap.width * scale).toInt(), 
-                (bitmap.height * scale).toInt(), 
-                true
-            )
-            tess.setImage(scaledBitmap)
+            tess.setImage(bitmap)
             
             // CRITICAL: We MUST call getUTF8Text() (or other recognition trigger) before accessing the iterator.
             // Otherwise, resultIterator will be null or empty.
@@ -76,7 +69,6 @@ object TesseractEngine {
 
             val iterator = tess.resultIterator ?: run {
                 Log.e(TAG, "ResultIterator is null after recognition!")
-                scaledBitmap.recycle()
                 tess.recycle()
                 return@withContext emptyList()
             }
@@ -100,14 +92,7 @@ object TesseractEngine {
 
                 if (wRect.isEmpty || wRect.width() < 2) continue
 
-                // Scale bounds back to original size
-                val wordBounds = android.graphics.RectF(
-                    wRect.left / scale,
-                    wRect.top / scale,
-                    wRect.right / scale,
-                    wRect.bottom / scale
-                )
-                
+                val wordBounds = android.graphics.RectF(wRect)
                 val wordObj = Word(
                     text = wordText,
                     index = allDetectedWords.size,
@@ -120,8 +105,6 @@ object TesseractEngine {
                 allDetectedWords.add(wordObj)
 
             } while (iterator.next(TessBaseAPI.PageIteratorLevel.RIL_WORD))
-
-            scaledBitmap.recycle()
 
             // Group words into lines based on Y-overlap for better UI grouping
             val sortedWords = allDetectedWords.sortedBy { it.bounds.top }

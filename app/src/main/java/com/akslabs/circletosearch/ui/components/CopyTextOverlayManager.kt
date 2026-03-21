@@ -357,6 +357,7 @@ class CopyTextOverlayManager(
         private var dragHandleType = 0  // 0=none, 1=start, 2=end
         private var toolbarButtons: List<ToolbarButton> = emptyList()
         private var toolbarRect = RectF()
+        private var dragHandleRect = RectF()
         private var toolbarOffsetX = 0f
         private var toolbarOffsetY = 0f
         private var isDraggingToolbar = false
@@ -477,7 +478,8 @@ class CopyTextOverlayManager(
             
             toolbarActionPaint.textSize = 30f // Slightly smaller
             val labelWidths = buttonLabels.map { toolbarActionPaint.measureText(it) + btnPadding * 2 }
-            val totalWidth = labelWidths.sum() + (buttonLabels.size - 1) * btnSpacing + m * 2
+            val dragHandleWidth = 24f * density
+            val totalWidth = labelWidths.sum() + (buttonLabels.size - 1) * btnSpacing + m * 2 + dragHandleWidth + btnSpacing
             
             val tx = ((width - totalWidth) / 2) + toolbarOffsetX
             
@@ -501,7 +503,28 @@ class CopyTextOverlayManager(
             canvas.drawRoundRect(toolbarRect, 22f * density, 22f * density, shadowPaint)
             canvas.drawRoundRect(toolbarRect, 22f * density, 22f * density, toolbarBgPaint.apply { color = dynamicSurface })
 
-            var currentX = tx + m
+            // Draw dedicated drag handle (M3 style bar)
+            val dx = tx + m
+            dragHandleRect.set(dx, ty + m, dx + dragHandleWidth, ty + m + btnHeight)
+            
+            val handleBarColor = try {
+                context.getColor(android.R.color.system_outline_variant_light)
+            } catch(e: Exception) { Color.LTGRAY }
+            
+            val hPaint = Paint(toolbarActionPaint).apply {
+                color = handleBarColor
+                style = Paint.Style.FILL
+            }
+            // Draw a vertical pill for dragging
+            canvas.drawRoundRect(
+                dx + 8f * density, 
+                ty + m + 8f * density, 
+                dx + 16f * density, 
+                ty + m + btnHeight - 8f * density, 
+                4f * density, 4f * density, hPaint
+            )
+
+            var currentX = tx + m + dragHandleWidth + btnSpacing
             val newButtons = mutableListOf<ToolbarButton>()
 
             buttonLabels.forEachIndexed { i, label ->
@@ -557,8 +580,8 @@ class CopyTextOverlayManager(
                         }
                     }
 
-                    // 2. Check toolbar background dragging
-                    if (toolbarRect.contains(lx, ly)) {
+                    // 2. Check dedicated drag handle ONLY
+                    if (dragHandleRect.contains(lx, ly)) {
                         isDraggingToolbar = true
                         return true
                     }
