@@ -67,83 +67,99 @@ object TesseractEngine {
             val fullAppText = tess.getUTF8Text()
             Log.d(TAG, "Tesseract recognition complete. Full text length: ${fullAppText?.length ?: 0}")
 
-            // We iterate over text lines so we can group words together into a TextNode,
-            // which gives the user a cleaner multi-word bounding box for copying blocks.
             val iterator = tess.resultIterator ?: run {
                 Log.e(TAG, "ResultIterator is null after recognition!")
                 tess.recycle()
                 return@withContext emptyList()
             }
-            
+            val allDetectedWords = mutableListOf<Word>()
             iterator.begin()
             
             do {
-                val blockText = iterator.getUTF8Text(TessBaseAPI.PageIteratorLevel.RIL_TEXTLINE)
-                if (blockText.isNullOrBlank()) continue
+                val wordText = iterator.getUTF8Text(TessBaseAPI.PageIteratorLevel.RIL_WORD)
+                if (wordText.isNullOrBlank()) continue
                 
-                val blockRectParams = iterator.getBoundingRect(TessBaseAPI.PageIteratorLevel.RIL_TEXTLINE) 
-                                     ?: iterator.getBoundingBox(TessBaseAPI.PageIteratorLevel.RIL_TEXTLINE)
+                val wordRectParams = iterator.getBoundingRect(TessBaseAPI.PageIteratorLevel.RIL_WORD) 
+                                     ?: iterator.getBoundingBox(TessBaseAPI.PageIteratorLevel.RIL_WORD)
                 
-                val parentRect = if (blockRectParams is Rect) {
-                    blockRectParams
-                } else if (blockRectParams is IntArray) {
-                    Rect(blockRectParams[0], blockRectParams[1], blockRectParams[2], blockRectParams[3])
+                val wRect = if (wordRectParams is Rect) {
+                    wordRectParams
+                } else if (wordRectParams is IntArray) {
+                    Rect(wordRectParams[0], wordRectParams[1], wordRectParams[2], wordRectParams[3])
                 } else {
                     continue
                 }
 
-                if (parentRect.isEmpty || parentRect.width() < 5) continue
+                if (wRect.isEmpty || wRect.width() < 2) continue
 
-                val words = mutableListOf<Word>()
-                // Standard Tesseract integration for Words within a block is complex via iterator if we don't restart iteration,
-                // so we just tokenize the line based on the bounding box proportionally as we used to do,
-                // or we treat the whole block as one word segment for now since Tesseract handles lines well.
-                // For optimal UX, we'll mimic the splitIntoWords logic.
+                // We'll wrap each word in a Word object and put it in a single TextNode for now,
+                // or group them by line if we want to maintain the "TextNode" structure.
+                // For simplified global selection, a single TextNode per line or even per word is fine.
+                // Let's group by line to keep the visual "block" grouping if needed.
+                // Actually, the new global selection treats all words linearly, so we can just
+                // create one TextNode per word or one per line. 
+                // Let's try to group them by the same line to keep the UI clean.
                 
-                // Let's do simple proportional splitting
-                val segments = blockText.split(Regex("\\s+")).filter { it.isNotBlank() }
-                var startOffsetChars = 0
-                val totalChars = blockText.length.toFloat()
+                val wordBounds = android.graphics.RectF(wRect)
+                val wordObj = Word(
+                    text = wordText,
+                    index = allDetectedWords.size,
+                    startIndex = 0, // Not strictly needed for global selection
+                    endIndex = wordText.length,
+                    bounds = wordBounds
+                )
+
+                // Add to a generic list first, then group by Y-coordinate similarity to form lines
+                allDetectedWords.add(wordObj)
+
+            } while (iterator.next(TessBaseAPI.PageIteratorLevel.RIL_WORD))
+
+            // Group words into lines based on Y-overlap for better UI grouping
+            val sortedWords = allDetectedWords.sortedBy { it.bounds.top }
+            val lines = mutableListOf<MutableList<Word>>()
+            
+            if (sortedWords.isNotEmpty()) {
+                var currentLine = mutableListOf<Word>()
+                currentLine.add(sortedWords[0])
+                lines.add(currentLine)
                 
-                segments.forEachIndexed { index, w ->
-                    val wStartPct = startOffsetChars / totalChars
-                    val wEndPct = (startOffsetChars + w.length) / totalChars
-
-                    val wLeft = parentRect.left + (parentRect.width() * wStartPct).toInt()
-                    val wRight = parentRect.left + (parentRect.width() * wEndPct).toInt()
-
-                    val wordBounds = android.graphics.RectF(
-                        wLeft.toFloat(),
-                        parentRect.top.toFloat(),
-                        wRight.toFloat(),
-                        parentRect.bottom.toFloat()
-                    )
+                for (i in 1 until sortedWords.size) {
+                    val prev = currentLine.last()
+                    val curr = sortedWords[i]
+                    // If the vertical centers are close enough, they are likely on the same line
+                    // Increased tolerance (0.7f) to better capture slightly misaligned text
+                    val verticalOverlap = Math.abs(curr.bounds.centerY() - prev.bounds.centerY()) < (prev.bounds.height() * 0.7f)
                     
-                    words.add(
-                        Word(
-                            text = w,
-                            index = index,
-                            startIndex = startOffsetChars,
-                            endIndex = startOffsetChars + w.length,
-                            bounds = wordBounds
-                        )
-                    )
-
-                    startOffsetChars += w.length + 1 // +1 for the space (simplified)
+                    if (verticalOverlap) {
+                        currentLine.add(curr)
+                    } else {
+                        currentLine = mutableListOf(curr)
+                        lines.add(currentLine)
+                    }
                 }
+            }
+
+            lines.forEach { lineWords ->
+                // Sort words in line by X-coordinate
+                val finalLineWords = lineWords.sortedBy { it.bounds.left }
+                val fullText = finalLineWords.joinToString(" ") { it.text }
                 
-                if (words.isNotEmpty()) {
-                    result.add(
-                        TextNode(
-                            id = UUID.randomUUID().toString(),
-                            fullText = blockText,
-                            bounds = parentRect,
-                            words = words
-                        )
-                    )
+                val lineBounds = Rect()
+                finalLineWords.forEach { w ->
+                    val r = Rect()
+                    w.bounds.roundOut(r)
+                    if (lineBounds.isEmpty()) lineBounds.set(r) else lineBounds.union(r)
                 }
 
-            } while (iterator.next(TessBaseAPI.PageIteratorLevel.RIL_TEXTLINE))
+                result.add(
+                    TextNode(
+                        id = UUID.randomUUID().toString(),
+                        fullText = fullText,
+                        bounds = lineBounds,
+                        words = finalLineWords
+                    )
+                )
+            }
             
             iterator.delete()
             tess.recycle()

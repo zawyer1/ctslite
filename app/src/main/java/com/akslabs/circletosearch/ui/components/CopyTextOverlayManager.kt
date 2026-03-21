@@ -24,24 +24,27 @@ import android.annotation.SuppressLint
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.Paint
-import android.graphics.Rect
-import android.graphics.RectF
-import android.graphics.PorterDuff
-import android.graphics.PorterDuffXfermode
-import android.view.GestureDetector
-import android.view.MotionEvent
-import android.view.View
-import android.view.accessibility.AccessibilityNodeInfo
+import android.graphics.*
+import android.view.*
+import android.view.accessibility.*
+import android.widget.FrameLayout
+import android.widget.PopupMenu
 import android.widget.Toast
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Color as ComposeColor
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.Alignment
+import kotlinx.coroutines.*
+import java.util.UUID
 
 /** Simple holder for a floating-toolbar button's label and screen hit-rect. */
 private class ToolbarButton(val label: String, val rect: Rect)
@@ -66,7 +69,8 @@ class CopyTextOverlayManager(
 
     // Detected text nodes and flattened words (sorted by reading order)
     private val detectedNodes = mutableListOf<TextNode>()
-    private val allWords = mutableListOf<Word>()
+    private var allWords: List<Word> = emptyList()
+    private var startSelectionIdx = -1 // For dragging
 
     // Global selection state (indices into 'allWords')
     private var globalSelectionStart: Int = -1
@@ -75,16 +79,111 @@ class CopyTextOverlayManager(
     // ── Public API ───────────────────────────────────────────────────────────
 
     fun getOverlayView(onDismiss: () -> Unit): View {
-        if (dimView != null) return dimView!!
-        android.util.Log.d("CopyText", "getOverlayView() called")
         onDismissCallback = onDismiss
-
-        val view = DimPunchOutView(context) { dismiss() }
+        
+        // Full Reset state for "fresh start"
+        globalSelectionStart = -1
+        globalSelectionEnd = -1
+        startSelectionIdx = -1
+        detectedNodes.clear()
+        allWords = emptyList()
+        
+        val container = FrameLayout(context)
+        
+        val view = DimPunchOutView(context)
         dimView = view
+        container.addView(view)
+        
+        val topBar = ComposeView(context).apply {
+            setContent {
+                MaterialTheme {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        TopBarUI(
+                            onClose = { dismiss() },
+                            onMenu = { showSettingsMenu() }
+                        )
+                    }
+                }
+            }
+        }
+        container.addView(topBar)
 
         android.util.Log.d("CopyText", "Starting accessibility node scan…")
         scanNodes(view)
-        return view
+        return container
+    }
+
+    @Composable
+    private fun TopBarUI(onClose: () -> Unit, onMenu: () -> Unit) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Close Button (Exact match from main UI)
+            IconButton(
+                onClick = onClose,
+                modifier = Modifier
+                    .background(android.graphics.Color.GRAY.toComposeColor().copy(alpha = 0.5f), CircleShape)
+                    .size(40.dp)
+            ) {
+                Icon(Icons.Default.Close, contentDescription = "Close", tint = ComposeColor.White)
+            }
+
+            // Menu Button (Exact match from main UI)
+            IconButton(
+                onClick = onMenu,
+                modifier = Modifier
+                    .background(android.graphics.Color.GRAY.toComposeColor().copy(alpha = 0.5f), CircleShape)
+                    .size(40.dp)
+            ) {
+                Icon(Icons.Default.MoreVert, contentDescription = "Menu", tint = ComposeColor.White)
+            }
+        }
+    }
+
+    private fun Int.toComposeColor(): ComposeColor = ComposeColor(this)
+
+    private fun showSettingsMenu() {
+        val anchor = dimView ?: return
+        val popup = PopupMenu(context, anchor, Gravity.END)
+        popup.menu.add("Select Language")
+        popup.menu.add("Import traineddata")
+        
+        popup.setOnMenuItemClickListener { item ->
+            when (item.title) {
+                "Select Language" -> showLanguageSelector()
+                "Import traineddata" -> triggerImport()
+            }
+            true
+        }
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            popup.setForceShowIcon(true)
+        }
+        popup.show()
+    }
+
+    private fun showLanguageSelector() {
+        val languages = listOf("English", "Hindi", "French", "Spanish", "German", "Chinese", "Japanese")
+        val codes = listOf("eng", "hin", "fra", "spa", "deu", "chi_sim", "jpn")
+        
+        android.app.AlertDialog.Builder(context)
+            .setTitle("Select OCR Language")
+            .setItems(languages.toTypedArray()) { _, which ->
+                val code = codes[which]
+                context.getSharedPreferences("OcrSettings", Context.MODE_PRIVATE)
+                    .edit().putString("selected_lang", code).apply()
+                Toast.makeText(context, "Language changed to ${languages[which]}. Restarting scan...", Toast.LENGTH_SHORT).show()
+                rescanNodes()
+            }
+            .show()
+    }
+
+    private fun triggerImport() {
+         Toast.makeText(context, "Please place .traineddata files in /sdcard/Android/data/${context.packageName}/files/tessdata/", Toast.LENGTH_LONG).show()
     }
 
     fun dismiss() {
@@ -123,18 +222,17 @@ class CopyTextOverlayManager(
             android.util.Log.d("CopyText", "Live OCR scan complete: ${sortedNodes.size} text nodes")
             
             detectedNodes.clear()
-            allWords.clear()
+            val tempAllWords = mutableListOf<Word>()
             detectedNodes.addAll(sortedNodes)
             
             // Flatten words and update their global index
-            var globalIdx = 0
             sortedNodes.forEach { node ->
                 node.words.forEach { word ->
                     // We reuse the Word object but treat it globally
-                    allWords.add(word)
-                    globalIdx++
+                    tempAllWords.add(word)
                 }
             }
+            allWords = tempAllWords
             
             view.invalidate()
         }
@@ -146,11 +244,10 @@ class CopyTextOverlayManager(
 
     @SuppressLint("ClickableViewAccessibility")
     inner class DimPunchOutView(
-        context: Context,
-        private val onBackPress: () -> Unit
+        context: Context
     ) : View(context) {
 
-
+        private val density = resources.displayMetrics.density
 
         // ── Coordinate helpers ────────────────────────────────────────────────
 
@@ -205,6 +302,12 @@ class CopyTextOverlayManager(
             isAntiAlias = false
         }
 
+        private val textPaint = Paint().apply {
+            color = Color.WHITE
+            textSize = 32f
+            isAntiAlias = true
+            textAlign = Paint.Align.CENTER
+        }
 
 
         private val selectedWordPaint = Paint().apply {
@@ -308,43 +411,49 @@ class CopyTextOverlayManager(
                 // We'll group selected words by their Word.bounds.centerY() (rounded)
                 val selectedWords = (start..end).mapNotNull { allWords.getOrNull(it) }
                 
-                selectedWords.groupBy { (it.bounds.centerY() / 10).toInt() }.forEach { (_, wordsInLine) ->
+                // Group words by line segments
+                val highlightPath = Path()
+                selectedWords.groupBy { (it.bounds.centerY() / 20).toInt() }.forEach { (_, wordsInLine) ->
                     if (wordsInLine.isEmpty()) return@forEach
                     
-                    // Create one unified Rect representing the entire highlight for this line segment
                     val first = wordsInLine.minBy { it.bounds.left }
                     val last  = wordsInLine.maxBy { it.bounds.right }
                     
-                    val combinedRect = RectF(
+                    val lineRect = RectF(
                         first.bounds.left,
                         wordsInLine.minOf { it.bounds.top },
                         last.bounds.right,
                         wordsInLine.maxOf { it.bounds.bottom }
                     )
                     
-                    val localLineHighlight = toLocal(combinedRect)
-                    localLineHighlight.inset(-4f, -4f) // Slight overlap for smoothness
-                    canvas.drawRoundRect(localLineHighlight, 12f, 12f, selectedWordPaint)
+                    val localLineHighlight = toLocal(lineRect)
+                    localLineHighlight.inset(-16f, -12f)
+                    highlightPath.addRoundRect(localLineHighlight, 12f, 12f, Path.Direction.CW)
                 }
+                // Draw all highlights IN ONE CALL to prevent alpha stacking (darker overlaps)
+                canvas.drawPath(highlightPath, selectedWordPaint)
 
-                // 4. Handles & Toolbar (Anchor to the overall selection)
+                // 4. Handles & Toolbar
                 val firstWord = allWords[start]
                 val lastWord  = allWords[end]
-                
                 val startLocal = toLocal(firstWord.bounds)
                 val endLocal   = toLocal(lastWord.bounds)
 
                 drawHandle(canvas, startLocal.left,  startLocal.top,    isStart = true)
                 drawHandle(canvas, endLocal.right,   endLocal.bottom,   isStart = false)
 
-                // Toolbar anchored to the encompassing rect of the whole selection
                 val encompassing = RectF(firstWord.bounds)
                 selectedWords.forEach { encompassing.union(it.bounds) }
                 drawFloatingToolbar(canvas, toLocal(encompassing))
             }
 
+            // 5. Top Bar is now handled by ComposeView in the FrameLayout
+            // so we don't draw it manually here anymore.
+
             canvas.restoreToCount(saveCount)
         }
+
+
 
         private fun drawHandle(canvas: Canvas, x: Float, y: Float, isStart: Boolean) {
             canvas.drawCircle(x, y, 18f, handlePaint)
@@ -353,49 +462,61 @@ class CopyTextOverlayManager(
         }
 
         private fun drawFloatingToolbar(canvas: Canvas, anchor: RectF) {
-            val btnW    = 170
-            val btnH    = 80
-            val padding = 12
-            val gap     = 8
-            val labels  = listOf("Copy", "Share", "Select All", "Cancel")
-
-            val totalW = labels.size * btnW + (labels.size - 1) * gap + padding * 2
-            val totalH = btnH + padding * 2
-
-            var left = anchor.centerX().toInt() - totalW / 2
-            var top  = anchor.top.toInt() - totalH - 32
-            if (top < 0)              top  = anchor.bottom.toInt() + 32
-            if (left < 10)            left = 10
-            if (left + totalW > width - 10) left = width - totalW - 10
-
-            val barRect = RectF(left.toFloat(), top.toFloat(), (left + totalW).toFloat(), (top + totalH).toFloat())
+            val buttonLabels = listOf("Copy", "Share", "All", "Cancel")
+            val btnPadding = 16f * density // More compact
+            val btnHeight = 36f * density  // Match native pill height
+            val btnSpacing = 6f * density
+            val m = 10f * density
             
-            toolbarBgPaint.setShadowLayer(20f, 0f, 8f, Color.parseColor("#44000000"))
-            canvas.drawRoundRect(barRect, 40f, 40f, toolbarBgPaint)
-            toolbarBgPaint.clearShadowLayer()
+            toolbarActionPaint.textSize = 30f // Slightly smaller
+            val labelWidths = buttonLabels.map { toolbarActionPaint.measureText(it) + btnPadding * 2 }
+            val totalWidth = labelWidths.sum() + (buttonLabels.size - 1) * btnSpacing + m * 2
+            
+            val tx = (width - totalWidth) / 2
+            var ty = anchor.bottom + 30f * density
+            if (ty + btnHeight + m * 2 > height - 100f) ty = anchor.top - (btnHeight + m * 2) - 30f * density
+            
+            val toolbarRect = RectF(tx, ty, tx + totalWidth, ty + btnHeight + m * 2)
+            
+            // Dynamic Background with shadow
+            val dynamicSurface = try { 
+                context.getColor(android.R.color.system_surface_container_light) 
+            } catch(e: Exception) { Color.parseColor("#F3EDF7") }
 
-            val buttons = mutableListOf<ToolbarButton>()
-            labels.forEachIndexed { idx, label ->
-                val bLeft  = left + padding + idx * (btnW + gap)
-                val bTop   = top  + padding
-                val bRect  = Rect(bLeft, bTop, bLeft + btnW, bTop + btnH)
-                buttons.add(ToolbarButton(label, bRect))
-
-                val bRectF = RectF(bRect)
-                if (label == "Copy" || label == "Share") {
-                    val pillPaint = Paint(toolbarActionPaint).apply { alpha = 35 }
-                    canvas.drawRoundRect(bRectF, 40f, 40f, pillPaint)
-                    canvas.drawText(label, bRectF.centerX(), bRectF.centerY() + 14f, toolbarActionPaint.apply { style = Paint.Style.FILL; textSize = 34f })
-                } else {
-                    canvas.drawText(label, bRectF.centerX(), bRectF.centerY() + 14f, toolbarTextPaint.apply { textSize = 34f })
-                }
+            val shadowPaint = Paint(toolbarBgPaint).apply {
+                setShadowLayer(12f * density, 0f, 4f * density, Color.BLACK and 0x2F000000)
             }
-            toolbarButtons = buttons
+            canvas.drawRoundRect(toolbarRect, 22f * density, 22f * density, shadowPaint)
+            canvas.drawRoundRect(toolbarRect, 22f * density, 22f * density, toolbarBgPaint.apply { color = dynamicSurface })
+
+            var currentX = tx + m
+            val newButtons = mutableListOf<ToolbarButton>()
+
+            buttonLabels.forEachIndexed { i, label ->
+                val bWidth = labelWidths[i]
+                val bRect = RectF(currentX, ty + m, currentX + bWidth, ty + m + btnHeight)
+                
+                // M3 Pill for EVERY button with Dynamic Primary
+                val dynamicPrimary = try {
+                    context.getColor(android.R.color.system_accent1_600)
+                } catch(e: Exception) { Color.parseColor("#6750A4") }
+
+                canvas.drawRoundRect(bRect, btnHeight / 2, btnHeight / 2, handlePaint.apply { color = dynamicPrimary })
+                
+                canvas.drawText(label, bRect.centerX(), bRect.centerY() + 10f, toolbarActionPaint.apply { 
+                    color = Color.WHITE
+                    style = Paint.Style.FILL
+                    textSize = 30f
+                    typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+                })
+                
+                newButtons.add(ToolbarButton(label, Rect(bRect.left.toInt(), bRect.top.toInt(), bRect.right.toInt(), bRect.bottom.toInt())))
+                currentX += bWidth + btnSpacing
+            }
+            toolbarButtons = newButtons
         }
 
         // ── Touch handling ────────────────────────────────────────────────────
-
-        private var startSelectionIdx = -1
 
         override fun onTouchEvent(event: MotionEvent): Boolean {
             val lx = event.x
@@ -403,6 +524,9 @@ class CopyTextOverlayManager(
 
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
+                    // Clicks for Top Bar are now handled by ComposeView, 
+                    // so we only check the floating toolbar and selection logic.
+                    
                     // 1. Check toolbar FIRST with 24px extra hit-padding for reliability
                     for (btn in toolbarButtons) {
                         val touchRect = Rect(btn.rect).apply { inset(-24, -24) }
@@ -434,7 +558,6 @@ class CopyTextOverlayManager(
                     if (nearest != -1) {
                         globalSelectionStart = nearest
                         globalSelectionEnd   = nearest
-                        startSelectionIdx    = nearest
                         performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
                         invalidate()
                         return true
@@ -455,7 +578,7 @@ class CopyTextOverlayManager(
                             invalidate()
                         }
                         return true
-                    } else if (startSelectionIdx != -1) {
+                    } else if (globalSelectionStart != -1 && globalSelectionEnd != -1) { // Continue selection if already active
                         val nearest = findNearestWordGlobal(sx, sy)
                         if (nearest != -1) {
                             globalSelectionEnd = nearest
@@ -499,7 +622,6 @@ class CopyTextOverlayManager(
 
 
 
-        // ── Toolbar action handler ────────────────────────────────────────────
 
         private fun handleToolbarAction(label: String) {
             val start = globalSelectionStart.coerceAtMost(globalSelectionEnd)
@@ -526,7 +648,7 @@ class CopyTextOverlayManager(
                     })
                     dismiss()
                 }
-                "Select All" -> {
+                "All", "Select All" -> {
                     globalSelectionStart = 0
                     globalSelectionEnd   = allWords.lastIndex
                     invalidate()
@@ -537,13 +659,19 @@ class CopyTextOverlayManager(
             }
         }
 
+
+        private fun statusBarsHeight(): Int {
+            val resourceId = resources.getIdentifier("status_bar_height", "dimen", "android")
+            return if (resourceId > 0) resources.getDimensionPixelSize(resourceId) else 0
+        }
+
         // ── Misc ──────────────────────────────────────────────────────────────
 
         override fun isInEditMode(): Boolean = false
 
         override fun onKeyDown(keyCode: Int, event: android.view.KeyEvent): Boolean {
             if (keyCode == android.view.KeyEvent.KEYCODE_BACK) {
-                onBackPress()
+                dismiss()
                 return true
             }
             return super.onKeyDown(keyCode, event)
