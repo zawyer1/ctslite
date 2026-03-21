@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
 import com.akslabs.circletosearch.data.BitmapRepository
 import com.akslabs.circletosearch.ocr.TesseractEngine
@@ -77,6 +78,28 @@ class CopyTextOverlayManager(
                 MaterialTheme {
                     Box(modifier = Modifier.fillMaxSize()) {
                         TopBarUI(onClose = { dismiss() })
+                        
+                        if (isScanning.value) {
+                            Column(
+                                modifier = Modifier.align(Alignment.Center),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(48.dp),
+                                    color = ComposeColor.White,
+                                    strokeWidth = 4.dp
+                                )
+                                Spacer(Modifier.height(16.dp))
+                                Text(
+                                    "Scanning text...", 
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = ComposeColor.White,
+                                    modifier = Modifier
+                                        .background(ComposeColor.Black.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -104,21 +127,6 @@ class CopyTextOverlayManager(
                     .size(40.dp)
             ) {
                 Icon(Icons.Default.Close, contentDescription = "Exit Copy Mode", tint = ComposeColor.White)
-            }
-            
-            if (isScanning.value) {
-                Spacer(Modifier.width(16.dp))
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    color = ComposeColor.White,
-                    strokeWidth = 2.dp
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    "Scanning text...", 
-                    style = MaterialTheme.typography.labelMedium,
-                    color = ComposeColor.White
-                )
             }
             
             Spacer(modifier = Modifier.weight(1f))
