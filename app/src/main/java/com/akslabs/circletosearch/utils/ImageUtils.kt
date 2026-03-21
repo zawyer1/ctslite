@@ -66,4 +66,40 @@ object ImageUtils {
             return source
         }
     }
+
+    fun saveToGallery(context: Context, bitmap: Bitmap): Boolean {
+        try {
+            val filename = "CircleSelection_${System.currentTimeMillis()}.png"
+            val contentValues = android.content.ContentValues().apply {
+                put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, filename)
+                put(android.provider.MediaStore.MediaColumns.MIME_TYPE, "image/png")
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                    put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, android.os.Environment.DIRECTORY_PICTURES + "/CircleToSearch")
+                    put(android.provider.MediaStore.MediaColumns.IS_PENDING, 1)
+                }
+            }
+
+            val contentResolver = context.contentResolver
+            val imageUri = contentResolver.insert(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+            
+            if (imageUri == null) return false
+
+            contentResolver.openOutputStream(imageUri).use { out ->
+                if (out != null) {
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                }
+            }
+
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                contentValues.clear()
+                contentValues.put(android.provider.MediaStore.MediaColumns.IS_PENDING, 0)
+                contentResolver.update(imageUri, contentValues, null, null)
+            }
+            
+            return true
+        } catch (e: Exception) {
+            android.util.Log.e("ImageUtils", "Failed to save to gallery", e)
+            return false
+        }
+    }
 }

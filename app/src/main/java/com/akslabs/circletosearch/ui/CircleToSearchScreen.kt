@@ -96,6 +96,7 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ScrollableTabRow
@@ -224,7 +225,12 @@ fun CircleToSearchScreen(
     // Friendly Message State
     var friendlyMessage by remember { mutableStateOf("") }
     var isMessageVisible by remember { mutableStateOf(false) }
-
+    var isCopyTextTriggered by remember { mutableStateOf(false) }
+    
+    // Resizing state
+    var isResizing by remember { mutableStateOf(false) }
+    var activeHandle by remember { mutableStateOf<String?>(null) } // "tl", "tr", "bl", "br"
+    
     LaunchedEffect(Unit) {
         if (uiPreferences.isShowFriendlyMessages()) {
             val manager = FriendlyMessageManager(context)
@@ -869,58 +875,93 @@ fun CircleToSearchScreen(
             }
 
             // 3. Drawing Canvas (Interactive Layer)
-            if (!isCopyMode) {
-                Canvas(
+            if (!isCopyMode) {                Canvas(
                     modifier = Modifier
                         .fillMaxSize()
                         .pointerInput(Unit) {
                             detectDragGestures(
                                 onDragStart = { offset ->
-                                    // Clear previous state
+                                    val rect = selectionRect
+                                    if (rect != null && selectionAnim.value == 1f) {
+                                        val handleSize = 64f // px for hit testing
+                                        val tl = Offset(rect.left.toFloat(), rect.top.toFloat())
+                                        val tr = Offset(rect.right.toFloat(), rect.top.toFloat())
+                                        val bl = Offset(rect.left.toFloat(), rect.bottom.toFloat())
+                                        val br = Offset(rect.right.toFloat(), rect.bottom.toFloat())
+                                        
+                                        when {
+                                            (offset - tl).getDistance() < handleSize -> { isResizing = true; activeHandle = "tl" }
+                                            (offset - tr).getDistance() < handleSize -> { isResizing = true; activeHandle = "tr" }
+                                            (offset - bl).getDistance() < handleSize -> { isResizing = true; activeHandle = "bl" }
+                                            (offset - br).getDistance() < handleSize -> { isResizing = true; activeHandle = "br" }
+                                            else -> { isResizing = false; activeHandle = null }
+                                        }
+                                        
+                                        if (isResizing) return@detectDragGestures
+                                    }
+
+                                    // Clear previous state if starting new draw
                                     currentPathPoints.clear()
                                     currentPathPoints.add(offset)
                                     selectionRect = null
                                     scope.launch { selectionAnim.snapTo(0f) }
                                 },
                                 onDrag = { change, _ ->
-                                    val offset = change.position
-                                    currentPathPoints.add(offset)
+                                    if (isResizing && activeHandle != null) {
+                                        val rect = selectionRect ?: return@detectDragGestures
+                                        val pos = change.position
+                                        val newRect = android.graphics.Rect(rect)
+                                        when (activeHandle) {
+                                            "tl" -> { newRect.left = pos.x.toInt(); newRect.top = pos.y.toInt() }
+                                            "tr" -> { newRect.right = pos.x.toInt(); newRect.top = pos.y.toInt() }
+                                            "bl" -> { newRect.left = pos.x.toInt(); newRect.bottom = pos.y.toInt() }
+                                            "br" -> { newRect.right = pos.x.toInt(); newRect.bottom = pos.y.toInt() }
+                                        }
+                                        // Basic validation (min size)
+                                        if (newRect.width() > 20 && newRect.height() > 20) {
+                                            selectionRect = newRect
+                                        }
+                                    } else {
+                                        currentPathPoints.add(change.position)
+                                    }
                                 },
                                 onDragEnd = {
-                                    if (currentPathPoints.isNotEmpty()) {
+                                    if (isResizing) {
+                                        isResizing = false
+                                        activeHandle = null
+                                        // Update cropped bitmap after resize
+                                        if (screenshot != null && selectionRect != null) {
+                                            selectedBitmap = ImageUtils.cropBitmap(screenshot, selectionRect!!)
+                                        }
+                                    } else if (currentPathPoints.isNotEmpty()) {
                                         var minX = Float.MAX_VALUE
                                         var minY = Float.MAX_VALUE
                                         var maxX = Float.MIN_VALUE
                                         var maxY = Float.MIN_VALUE
-
                                         currentPathPoints.forEach { p ->
-                                            minX = min(minX, p.x)
-                                            minY = min(minY, p.y)
-                                            maxX = max(maxX, p.x)
-                                            maxY = max(maxY, p.y)
+                                            minX = kotlin.math.min(minX, p.x)
+                                            minY = kotlin.math.min(minY, p.y)
+                                            maxX = kotlin.math.max(maxX, p.x)
+                                            maxY = kotlin.math.max(maxY, p.y)
                                         }
-                                        
-                                        val rect = Rect(
-                                            minX.toInt(),
-                                            minY.toInt(),
-                                            maxX.toInt(),
-                                            maxY.toInt()
+
+                                        val border = 20
+                                        val rect = android.graphics.Rect(
+                                            (minX - border).toInt().coerceAtLeast(0),
+                                            (minY - border).toInt().coerceAtLeast(0),
+                                            (maxX + border).toInt().coerceAtMost(screenshot?.width ?: 0),
+                                            (maxY + border).toInt().coerceAtMost(screenshot?.height ?: 0)
                                         )
-                                        
-                                        selectionRect = rect
-                                        // Clear points to remove the drawn line and show the lens rect
-                                        currentPathPoints.clear() 
-                                        
-                                        scope.launch {
-                                            selectionAnim.animateTo(
-                                                targetValue = 1f,
-                                                animationSpec = tween(600)
-                                            )
-                                            android.util.Log.d("CircleToSearch", "Selection rect: ${rect.left},${rect.top},${rect.right},${rect.bottom}")
-                                            selectedBitmap = ImageUtils.cropBitmap(screenshot!!, rect)
-                                            android.util.Log.d("CircleToSearch", "Cropped bitmap size: ${selectedBitmap!!.width}x${selectedBitmap!!.height}")
-                                            isSearching = true
-                                            // Sheet expands automatically in LaunchedEffect
+
+                                        if (rect.width() > 10 && rect.height() > 10) {
+                                            selectionRect = rect
+                                            if (screenshot != null) {
+                                                selectedBitmap = ImageUtils.cropBitmap(screenshot!!, rect)
+                                            }
+                                            scope.launch {
+                                                selectionAnim.animateTo(1f, tween(600))
+                                                isSearching = true
+                                            }
                                         }
                                     }
                                 }
@@ -1488,46 +1529,85 @@ fun CircleToSearchScreen(
                             tonalElevation = 4.dp,
                             shadowElevation = 8.dp
                         ) {
-                            androidx.compose.material3.FilledTonalButton(
-                                onClick = {
-                                    if (selectedBitmap != null) {
-                                        scope.launch {
-                                            try {
-                                                val fileName = "selection_${java.util.UUID.randomUUID()}.png"
-                                                val path = ImageUtils.saveBitmap(context, selectedBitmap!!, fileName)
-                                                val file = java.io.File(path)
-                                                val uri = androidx.core.content.FileProvider.getUriForFile(context, "com.akslabs.circletosearch.fileprovider", file)
-                                                val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply { 
-                                                    type = "image/png"
-                                                    putExtra(android.content.Intent.EXTRA_STREAM, uri)
-                                                    clipData = android.content.ClipData.newRawUri("Selection", uri)
-                                                    addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                                    addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                // 1. SHARE BUTTON
+                                androidx.compose.material3.FilledTonalButton(
+                                    onClick = {
+                                        if (selectedBitmap != null) {
+                                            scope.launch {
+                                                try {
+                                                    val fileName = "selection_${java.util.UUID.randomUUID()}.png"
+                                                    val path = ImageUtils.saveBitmap(context, selectedBitmap!!, fileName)
+                                                    val file = java.io.File(path)
+                                                    val uri = androidx.core.content.FileProvider.getUriForFile(context, "com.akslabs.circletosearch.fileprovider", file)
+                                                    val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply { 
+                                                        type = "image/png"
+                                                        putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                                                        clipData = android.content.ClipData.newRawUri("Selection", uri)
+                                                        addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                                        addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                                    }
+                                                    context.startActivity(android.content.Intent.createChooser(shareIntent, "Share Selection").apply { 
+                                                        addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK) 
+                                                    })
+                                                } catch (e: Exception) {
+                                                    android.util.Log.e("CircleToSearch", "Failed to share selection", e)
                                                 }
-                                                context.startActivity(android.content.Intent.createChooser(shareIntent, "Share Selection").apply { 
-                                                    addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK) 
-                                                })
-                                            } catch (e: Exception) {
-                                                android.util.Log.e("CircleToSearch", "Failed to share selection", e)
                                             }
                                         }
-                                    }
-                                },
-                                modifier = Modifier.height(48.dp),
-                                shape = CircleShape,
-                                colors = androidx.compose.material3.ButtonDefaults.filledTonalButtonColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                                    contentColor = MaterialTheme.colorScheme.onSurface
-                                ),
-                                elevation = null, // Surface handles shadow/tonal
-                                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 24.dp)
-                            ) {
-                                Text(
-                                    "Share", 
-                                    style = MaterialTheme.typography.labelLarge.copy(
-                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Normal
+                                    },
+                                    modifier = Modifier.height(48.dp),
+                                    shape = CircleShape,
+                                    colors = androidx.compose.material3.ButtonDefaults.filledTonalButtonColors(
+                                        containerColor = Color.Transparent, // Parent surface handles color
+                                        contentColor = MaterialTheme.colorScheme.onSurface
+                                    ),
+                                    elevation = null,
+                                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp)
+                                ) {
+                                    Text(
+                                        "Share", 
+                                        style = MaterialTheme.typography.labelLarge.copy(
+                                            fontWeight = androidx.compose.ui.text.font.FontWeight.Normal
+                                        )
                                     )
+                                }
+
+                                // Separator
+                                androidx.compose.material3.VerticalDivider(
+                                    modifier = Modifier.height(24.dp).padding(horizontal = 2.dp),
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                                 )
+
+                                // 2. SAVE BUTTON
+                                androidx.compose.material3.FilledTonalButton(
+                                    onClick = {
+                                        if (selectedBitmap != null) {
+                                            val success = ImageUtils.saveToGallery(context, selectedBitmap!!)
+                                            if (success) {
+                                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                                android.widget.Toast.makeText(context, "Saved to Gallery", android.widget.Toast.LENGTH_SHORT).show()
+                                            } else {
+                                                android.widget.Toast.makeText(context, "Failed to save", android.widget.Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
+                                    },
+                                    modifier = Modifier.height(48.dp),
+                                    shape = CircleShape,
+                                    colors = androidx.compose.material3.ButtonDefaults.filledTonalButtonColors(
+                                        containerColor = Color.Transparent,
+                                        contentColor = MaterialTheme.colorScheme.onSurface
+                                    ),
+                                    elevation = null,
+                                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp)
+                                ) {
+                                    Text(
+                                        "Save", 
+                                        style = MaterialTheme.typography.labelLarge.copy(
+                                            fontWeight = androidx.compose.ui.text.font.FontWeight.Normal
+                                        )
+                                    )
+                                }
                             }
                         }
                     }
