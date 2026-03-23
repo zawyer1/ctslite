@@ -21,6 +21,7 @@ package com.akslabs.circletosearch.ui
 
 import android.graphics.Bitmap
 import android.graphics.Rect
+import com.akslabs.circletosearch.CircleToSearchAccessibilityService
 import android.util.Base64
 import android.view.ViewGroup
 import android.webkit.WebSettings
@@ -79,6 +80,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.QrCode
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Send
@@ -1484,9 +1486,39 @@ fun CircleToSearchScreen(
                                 }
                             }
 
-                            // GitHub
-                            BottomBarButton("GitHub", { Icon(painterResource(id = com.akslabs.circletosearch.R.drawable.github), null, modifier = Modifier.size(22.dp)) }) {
-                                context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://github.com/aks-labs")).apply { addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK) })
+                            // Pin
+                            val isPinEnabled = selectedBitmap != null
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                FilledTonalIconButton(
+                                    onClick = { 
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                        selectedBitmap?.let { bmp ->
+                                            CircleToSearchAccessibilityService.pinArea(bmp, selectionRect ?: android.graphics.Rect())
+                                            // Close CTS UI after pinning
+                                            (context as? android.app.Activity)?.finish()
+                                        }
+                                    },
+                                    enabled = isPinEnabled,
+                                    modifier = Modifier.size(52.dp),
+                                    colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                        containerColor = if (isPinEnabled) MaterialTheme.colorScheme.surfaceContainerHigh else MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.5f),
+                                        contentColor = if (isPinEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                    )
+                                ) { 
+                                    Icon(
+                                        Icons.Default.PushPin, 
+                                        contentDescription = "Pin Selection",
+                                        modifier = Modifier.size(22.dp)
+                                    ) 
+                                }
+                                Text(
+                                    text = "Pin", 
+                                    style = MaterialTheme.typography.labelSmall, 
+                                    color = if (isPinEnabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f), 
+                                    textAlign = TextAlign.Center, 
+                                    maxLines = 1, 
+                                    softWrap = false
+                                )
                             }
 
                             // Telegram

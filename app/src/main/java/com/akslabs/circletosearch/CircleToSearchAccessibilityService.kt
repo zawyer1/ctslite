@@ -28,7 +28,9 @@ import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.graphics.Outline
 import android.graphics.PixelFormat
+import android.graphics.Rect
 import android.graphics.drawable.GradientDrawable
 import android.hardware.camera2.CameraManager
 import android.os.Build
@@ -49,6 +51,7 @@ import com.akslabs.circletosearch.data.GestureType
 import com.akslabs.circletosearch.data.OverlayConfigurationManager
 import com.akslabs.circletosearch.data.OverlaySegment
 import com.akslabs.circletosearch.ui.components.CopyTextOverlayManager
+import com.akslabs.circletosearch.utils.ImageUtils
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 
@@ -722,13 +725,194 @@ class CircleToSearchAccessibilityService : AccessibilityService() {
         }
     }
 
-    private fun launchOverlay() {
+    fun launchOverlay() {
         android.util.Log.d("CircleToSearchAccess", "AccessibilityService launching OverlayActivity")
         val intent = Intent(this, OverlayActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION) // Disable animation for faster feel
         }
         startActivity(intent)
+    }
+
+    private fun showPinnedArea(bitmap: Bitmap, rect: android.graphics.Rect) {
+        android.util.Log.d("CircleToSearch", "showPinnedArea called for rect: $rect")
+        
+        val displayMetrics = resources.displayMetrics
+        val screenWidth = displayMetrics.widthPixels
+        val screenHeight = displayMetrics.heightPixels
+
+        // Initial Position: Center of the selection
+        val centerX = rect.centerX()
+        val centerY = rect.centerY()
+        
+        // Initial Size: Max 50% of screen width to keep it as a "sticker"
+        val maxDim = (screenWidth * 0.5f).toInt()
+        var width = bitmap.width
+        var height = bitmap.height
+        if (width > maxDim || height > maxDim) {
+            val ratio = width.toFloat() / height.toFloat()
+            if (width > height) {
+                width = maxDim
+                height = (maxDim / ratio).toInt()
+            } else {
+                height = maxDim
+                width = (maxDim * ratio).toInt()
+            }
+        }
+
+        val params = WindowManager.LayoutParams(
+            width, height,
+            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            PixelFormat.TRANSLUCENT
+        )
+        params.gravity = Gravity.TOP or Gravity.START
+        params.x = centerX - width / 2
+        params.y = centerY - height / 2
+
+        val pinnedView = android.widget.ImageView(this).apply {
+            setImageBitmap(bitmap)
+            scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+            elevation = 20f
+            // Give it rounded corners
+            outlineProvider = object : ViewOutlineProvider() {
+                override fun getOutline(view: View, outline: android.graphics.Outline) {
+                    outline.setRoundRect(0, 0, view.width, view.height, 16f * resources.displayMetrics.density)
+                }
+            }
+            clipToOutline = true
+            
+            var initialX = 0
+            var initialY = 0
+            var initialTouchX = 0f
+            var initialTouchY = 0f
+
+            @SuppressLint("ClickableViewAccessibility")
+            setOnTouchListener { v, event ->
+                when (event.action) {
+                    MotionEvent.ACTION_DOWN -> {
+                        initialX = params.x
+                        initialY = params.y
+                        initialTouchX = event.rawX
+                        initialTouchY = event.rawY
+                        v.animate().scaleX(1.05f).scaleY(1.05f).setDuration(100).start()
+                        true
+                    }
+                    MotionEvent.ACTION_MOVE -> {
+                        params.x = initialX + (event.rawX - initialTouchX).toInt()
+                        params.y = initialY + (event.rawY - initialTouchY).toInt()
+                        windowManager?.updateViewLayout(v, params)
+                        true
+                    }
+                    MotionEvent.ACTION_UP -> {
+                        v.animate().scaleX(1.0f).scaleY(1.0f).setDuration(100).start()
+                        // Small bounce if dragged to edge? (Optional)
+                        true
+                    }
+                    else -> false
+                }
+            }
+            
+            // Long press for actions (Phase 29)
+            setOnLongClickListener {
+                showPinnedActions(this, bitmap, params)
+                true
+            }
+        }
+
+        try {
+            windowManager?.addView(pinnedView, params)
+        } catch (e: Exception) {
+            android.util.Log.e("CircleToSearch", "Failed to add pinned view", e)
+        }
+    }
+
+    private fun showPinnedActions(anchorView: View, bitmap: Bitmap, anchorParams: WindowManager.LayoutParams) {
+        val displayMetrics = resources.displayMetrics
+        val iconSize = (44 * displayMetrics.density).toInt()
+        val padding = (8 * displayMetrics.density).toInt()
+
+        val menuLayout = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.HORIZONTAL
+            setBackgroundColor(Color.parseColor("#E0000000")) // Semi-transparent black
+            setPadding(padding, padding, padding, padding)
+            // Rounded corners for menu
+            outlineProvider = object : ViewOutlineProvider() {
+                override fun getOutline(view: View, outline: android.graphics.Outline) {
+                    outline.setRoundRect(0, 0, view.width, view.height, 24f * displayMetrics.density)
+                }
+            }
+            clipToOutline = true
+            elevation = 30f
+        }
+
+        fun createButton(iconRes: Int, color: Int, onClick: () -> Unit) = android.widget.ImageButton(this).apply {
+            setImageResource(iconRes)
+            setBackgroundColor(Color.TRANSPARENT)
+            imageTintList = android.content.res.ColorStateList.valueOf(color)
+            scaleType = android.widget.ImageView.ScaleType.CENTER_INSIDE
+            layoutParams = android.widget.LinearLayout.LayoutParams(iconSize, iconSize)
+            setOnClickListener { onClick() }
+        }
+
+        val menuParams = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            PixelFormat.TRANSLUCENT
+        )
+        menuParams.gravity = Gravity.TOP or Gravity.START
+        
+        // Position menu above the anchor if possible, else below
+        menuParams.x = anchorParams.x + (anchorParams.width / 2) - (iconSize * 1.5f + padding * 2).toInt()
+        menuParams.y = if (anchorParams.y > iconSize * 3) anchorParams.y - iconSize * 2 else anchorParams.y + anchorParams.height + padding
+
+        // --- Action: Delete ---
+        menuLayout.addView(createButton(android.R.drawable.ic_menu_delete, Color.RED) {
+            try {
+                windowManager?.removeView(anchorView)
+                windowManager?.removeView(menuLayout)
+            } catch (e: Exception) {}
+        })
+
+        // --- Action: Save ---
+        menuLayout.addView(createButton(android.R.drawable.ic_menu_save, Color.WHITE) {
+            val success = ImageUtils.saveToGallery(this@CircleToSearchAccessibilityService, bitmap)
+            android.widget.Toast.makeText(this@CircleToSearchAccessibilityService, if (success) "Saved to Gallery" else "Save failed", android.widget.Toast.LENGTH_SHORT).show()
+            try { windowManager?.removeView(menuLayout) } catch (e: Exception) {}
+        })
+
+        // --- Action: Share ---
+        menuLayout.addView(createButton(android.R.drawable.ic_menu_share, Color.WHITE) {
+            try {
+                val fileName = "share_pin_${java.util.UUID.randomUUID()}.png"
+                val path = ImageUtils.saveBitmap(this@CircleToSearchAccessibilityService, bitmap, fileName)
+                val file = java.io.File(path)
+                val uri = androidx.core.content.FileProvider.getUriForFile(this@CircleToSearchAccessibilityService, "com.akslabs.circletosearch.fileprovider", file)
+                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = "image/png"
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                startActivity(Intent.createChooser(shareIntent, "Share Pin").apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) })
+            } catch (e: Exception) {
+                android.util.Log.e("CircleToSearch", "Share failed", e)
+            }
+            try { windowManager?.removeView(menuLayout) } catch (e: Exception) {}
+        })
+
+        // Dismiss menu on outside touch or after delay (simpler: click elsewhere or just close it after action)
+        // For now, it stays until an action is picked or service is destroyed.
+
+        try {
+            windowManager?.addView(menuLayout, menuParams)
+        } catch (e: Exception) {
+            android.util.Log.e("CircleToSearch", "Failed to add menu view", e)
+        }
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -752,6 +936,11 @@ class CircleToSearchAccessibilityService : AccessibilityService() {
         fun triggerCapture() {
             android.util.Log.d("CircleToSearch", "triggerCapture static called. instance=${instance != null}")
             instance?.performCapture()
+        }
+
+        fun pinArea(bitmap: Bitmap, rect: android.graphics.Rect) {
+            android.util.Log.d("CircleToSearch", "pinArea static called. instance=${instance != null}")
+            instance?.showPinnedArea(bitmap, rect)
         }
     }
 
