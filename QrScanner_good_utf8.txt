@@ -1,4 +1,4 @@
-package com.akslabs.circletosearch.utils
+﻿package com.akslabs.circletosearch.utils
 
 import android.graphics.Bitmap
 import android.graphics.RectF
@@ -60,23 +60,11 @@ object QrScanner {
             val binaryBitmap = BinaryBitmap(HybridBinarizer(source))
 
             val multiReader = GenericMultipleBarcodeReader(MultiFormatReader())
-            android.util.Log.d("CircleToSearch", "QrScanner: Starting decodeMultiple (HybridBinarizer)...")
-            var rawResults: Array<Result> = try {
+            val rawResults: Array<Result> = try {
                 multiReader.decodeMultiple(binaryBitmap, HINTS)
             } catch (e: NotFoundException) {
-                android.util.Log.d("CircleToSearch", "QrScanner: HybridBinarizer found nothing, trying GlobalHistogramBinarizer...")
-                try {
-                    val globalBitmap = BinaryBitmap(com.google.zxing.common.GlobalHistogramBinarizer(source))
-                    multiReader.decodeMultiple(globalBitmap, HINTS)
-                } catch (e2: NotFoundException) {
-                    android.util.Log.d("CircleToSearch", "QrScanner: GlobalHistogramBinarizer also found nothing")
-                    emptyArray()
-                }
-            } catch (e: Exception) {
-                android.util.Log.e("CircleToSearch", "QrScanner: Error during decode", e)
                 emptyArray()
             }
-            android.util.Log.d("CircleToSearch", "QrScanner: Processed ${rawResults.size} raw results")
 
             rawResults.mapNotNull { raw ->
                 try {

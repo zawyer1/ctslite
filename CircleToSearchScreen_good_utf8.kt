@@ -1,4 +1,4 @@
-/*
+﻿/*
  *
  *  * Copyright (C) 2025 AKS-Labs (original author)
  *  *
@@ -204,7 +204,7 @@ fun CircleToSearchScreen(
     //Slide-in animation
     var isUIVisible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        isUIVisible = true // Déclenche l'animation à l'ouverture
+        isUIVisible = true // D├⌐clenche l'animation ├á l'ouverture
     }
 
     // Search Engines Order Logic
@@ -263,6 +263,15 @@ fun CircleToSearchScreen(
     var hostedImageUrl by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(false) }
     
+    // Auto-scan entire screenshot for QR codes when it arrives
+    LaunchedEffect(screenshot) {
+        if (screenshot != null) {
+            val found = withContext(Dispatchers.Default) {
+                QrScanner.scanBitmapAll(screenshot!!)
+            }
+            detectedQrCodes = found
+        }
+    }
     // Desktop Mode - Per Tab
     // We use a set to track which engines are in desktop mode
     val initialDesktopMode = uiPreferences.isDesktopMode() // Global default
@@ -388,7 +397,6 @@ fun CircleToSearchScreen(
         }
     }
     
-    
     // searchEngines moved to top
     // val searchEngines = SearchEngine.values()
 
@@ -397,22 +405,6 @@ fun CircleToSearchScreen(
         targetValue = if (screenshot != null) 1f else 0f,
         animationSpec = tween(1000), label = "alpha"
     )
-
-    // Auto-scan entire screenshot for QR codes when it arrives
-    LaunchedEffect(screenshot) {
-        android.util.Log.d("CircleToSearch", "Auto-scan Effect: screenshot=${screenshot != null}")
-        if (screenshot != null) {
-            val found = withContext(Dispatchers.Default) {
-                android.util.Log.d("CircleToSearch", "Auto-scan starting...")
-                val res = QrScanner.scanBitmapAll(screenshot!!)
-                android.util.Log.d("CircleToSearch", "Auto-scan finished: found ${res.size} codes")
-                res
-            }
-            detectedQrCodes = found
-        } else {
-            detectedQrCodes = emptyList()
-        }
-    }
 
     // Helper to create and configure WebView
     fun createWebView(ctx: android.content.Context, engine: SearchEngine): WebView {
@@ -1121,7 +1113,7 @@ fun CircleToSearchScreen(
             androidx.compose.animation.AnimatedVisibility(
                 visible = isUIVisible && !isCopyMode,
                 enter = androidx.compose.animation.slideInVertically(
-                    initialOffsetY = { -it }, // Commence au-dessus de l'écran (-100%)
+                    initialOffsetY = { -it }, // Commence au-dessus de l'├⌐cran (-100%)
                     animationSpec = tween(500, easing = androidx.compose.animation.core.FastOutSlowInEasing)
                 ),
                 modifier = Modifier.align(Alignment.TopCenter).zIndex(2000f)
@@ -1156,7 +1148,7 @@ fun CircleToSearchScreen(
                             colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(Color.White)
                         )
                     } else {
-                        // Si c'est Bing, Yandex, etc., on garde le texte stylé d'origine
+                        // Si c'est Bing, Yandex, etc., on garde le texte styl├⌐ d'origine
                         Text(
                             text = selectedEngine.name,
                             style = MaterialTheme.typography.headlineMedium.copy(
@@ -1300,7 +1292,7 @@ fun CircleToSearchScreen(
                     }
                 }
             }
-            // 5. Bottom Bar — Material 3 Expressive two-row card
+            // 5. Bottom Bar ΓÇö Material 3 Expressive two-row card
             // State for Copy Text mode
             var isCopyTextTriggered by remember { mutableStateOf(false) }
 
@@ -1316,7 +1308,7 @@ fun CircleToSearchScreen(
                 ) + fadeOut(animationSpec = tween(200)),
                 modifier = Modifier.align(Alignment.BottomCenter).zIndex(2000f)
             ) {
-                // ── Outer card container ──────────────────────────────────────────
+                // ΓöÇΓöÇ Outer card container ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
                 androidx.compose.material3.Surface(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
@@ -1334,7 +1326,7 @@ fun CircleToSearchScreen(
                             .padding(horizontal = 12.dp, vertical = 10.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        // ── ROW 1: Search Pill + Instant Actions (Song, Translate) ──
+                        // ΓöÇΓöÇ ROW 1: Search Pill + Instant Actions (Song, Translate) ΓöÇΓöÇ
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
@@ -1441,7 +1433,7 @@ fun CircleToSearchScreen(
                             }
                         }
 
-                        // ── ROW 2: Action buttons ───────────────────────────────
+                        // ΓöÇΓöÇ ROW 2: Action buttons ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceEvenly,
@@ -1539,7 +1531,7 @@ fun CircleToSearchScreen(
                 )
             }
 
-            // 4. Selection Actions (Share) — Positioned at the very end for absolute top-layer rendering
+            // 4. Selection Actions (Share) ΓÇö Positioned at the very end for absolute top-layer rendering
             if (selectionRect != null && selectionAnim.value == 1f && !isCopyMode) {
                 val rect = selectionRect!!
                 val density = androidx.compose.ui.platform.LocalDensity.current
@@ -1561,14 +1553,13 @@ fun CircleToSearchScreen(
                 ) {
                     val screenWidth = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp.dp
                     val screenHeight = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.dp
-                    val centerX = (leftDp + rightDp) / 2
                     Box(
                         modifier = Modifier
                             .offset(
-                                x = (centerX - 125.dp).coerceIn(0.dp, screenWidth - 250.dp),
+                                x = ((leftDp + rightDp) / 2 - 90.dp).coerceIn(16.dp, screenWidth - 196.dp),
                                 y = if (topPx > 200f) (topDp - 72.dp).coerceAtLeast(16.dp) else (bottomDp + 16.dp).coerceAtMost(screenHeight - 80.dp)
                             )
-                            .width(250.dp),
+                            .wrapContentSize(),
                         contentAlignment = Alignment.Center
                     ) {
                         // Wrapped in Surface to match Bottom Bar tonal environment
@@ -1665,13 +1656,12 @@ fun CircleToSearchScreen(
 
         // --- NEW: QR Overlay Chips (High Layer) ---
         if (screenshot != null && !isCopyMode) {
-            BoxWithConstraints(modifier = Modifier.fillMaxSize().zIndex(2500f)) {
+            BoxWithConstraints(modifier = Modifier.fillMaxSize().zIndex(2000f)) {
                 val screenWidth = maxWidth
                 val screenHeight = maxHeight
                 val bitmapWidth = screenshot.width.toFloat()
                 val bitmapHeight = screenshot.height.toFloat()
 
-                android.util.Log.d("CircleToSearch", "Rendering QR Chips: count=${detectedQrCodes.size}")
                 detectedQrCodes.forEach { qr ->
                     qr.bounds?.let { bounds ->
                         val chipX = (bounds.centerX() / bitmapWidth) * screenWidth.value

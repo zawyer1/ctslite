@@ -159,7 +159,7 @@ fun QrCodeResultSheet(
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         tonalElevation = 6.dp, shadowElevation = 12.dp
     ) {
-        Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             // Header Row
             Row(modifier = Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.QrCode, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
@@ -182,7 +182,7 @@ fun QrCodeResultSheet(
                 }
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(20.dp))
 
             if (isScanning) {
                 ScanningIndicator(scanlineY)
@@ -200,7 +200,7 @@ fun QrCodeResultSheet(
                     }
                     
                     if (results.size > 1) {
-                        Spacer(Modifier.height(16.dp))
+                        Spacer(Modifier.height(20.dp))
                         Row(
                             Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.Center,
@@ -253,7 +253,7 @@ fun NotFoundContent() {
 
 @Composable
 fun QrResultContent(context: Context, result: QrResult) {
-    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
         when (result) {
             is QrResult.Url       -> UrlResult(context, result)
             is QrResult.WiFi      -> WifiResult(context, result)
@@ -282,7 +282,7 @@ private fun UrlResult(context: Context, result: QrResult.Url) {
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.clickable { openUrl(context, result.url) }.padding(2.dp)
         )
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(20.dp))
         ActionRow { PrimaryAction("Open Link") { openUrl(context, result.url) }; SecondaryAction("Copy") { copyToClipboard(context, "URL", result.url) } }
     }
 }
@@ -294,7 +294,7 @@ private fun WifiResult(context: Context, result: QrResult.WiFi) {
         Spacer(Modifier.height(6.dp))
         Text(result.ssid, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
         Text("${result.security}${if (result.password != null) " · ${result.password}" else ""}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(20.dp))
         ActionRow { if (result.password != null) PrimaryAction("Copy Pass") { copyToClipboard(context, "WiFi Password", result.password) } }
     }
 }
@@ -305,7 +305,7 @@ private fun PhoneResult(context: Context, result: QrResult.Phone) {
         Icon(Icons.Default.Phone, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(40.dp))
         Spacer(Modifier.height(6.dp))
         Text(result.number, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(20.dp))
         ActionRow {
             PrimaryAction("Call") { openUrl(context, "tel:${result.number}") }
             SecondaryAction("SMS") { openUrl(context, "sms:${result.number}") }
@@ -320,7 +320,7 @@ private fun ProductResult(context: Context, result: QrResult.Product) {
         Icon(Icons.Default.ShoppingBag, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(40.dp))
         Spacer(Modifier.height(6.dp))
         Text(result.barcode, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(20.dp))
         ActionRow {
             PrimaryAction("Amazon") { openUrl(context, "https://www.amazon.com/s?k=${result.barcode}") }
             SecondaryAction("Google") { openUrl(context, "https://www.google.com/search?q=${result.barcode}") }
@@ -336,7 +336,7 @@ private fun VCardResult(context: Context, result: QrResult.VCard) {
         if (result.name != null) Text(result.name, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
         val sub = listOfNotNull(result.phone, result.email).joinToString(" · ")
         if (sub.isNotEmpty()) Text(sub, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(20.dp))
         ActionRow {
             PrimaryAction("Save") {
                 context.startActivity(Intent(Intent.ACTION_INSERT).apply {
@@ -359,7 +359,7 @@ private fun GeoResult(context: Context, result: QrResult.GeoPoint) {
         Icon(Icons.Default.LocationOn, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(40.dp))
         Spacer(Modifier.height(6.dp))
         Text(coord, style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(20.dp))
         ActionRow {
             PrimaryAction("Maps") { openUrl(context, "geo:${result.lat},${result.lng}?q=${result.lat},${result.lng}") }
             SecondaryAction("Copy") { copyToClipboard(context, "Coordinates", coord) }
@@ -379,7 +379,7 @@ private fun PlainTextResult(context: Context, result: QrResult.PlainText) {
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(horizontal = 8.dp)
         )
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(20.dp))
         ActionRow {
             PrimaryAction("Search") { openUrl(context, "https://www.google.com/search?q=${Uri.encode(result.text)}") }
             SecondaryAction("Copy") { copyToClipboard(context, "Text", result.text) }
