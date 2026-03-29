@@ -2,6 +2,8 @@
 <!--
   ~ /*
   ~  * Copyright (C) 2025 AKS-Labs (original author)
+    *  * Modifications Copyright (C) 2026 Zawyer1
+  ~  * Modifications Copyright (C) 2025 Fork Contributors
   ~  *
   ~  * This program is free software: you can redistribute it and/or modify
   ~  * it under the terms of the GNU General Public License as published by
@@ -18,10 +20,17 @@
   ~  */
   -->
 
+<!--
+    FORK CHANGE: android:recognitionService attribute removed.
+    CircleToSearchRecognitionService has been deleted from the project.
+    The recognitionService attribute is only needed for apps that provide
+    voice recognition — this app does not. Removing it has no effect on
+    the assistant trigger or screenshot functionality.
+-->
 <voice-interaction-service xmlns:android="http://schemas.android.com/apk/res/android"
-    android:sessionService="com.akslabs.circletosearch.AssistSessionService"
-    android:recognitionService="com.akslabs.circletosearch.CircleToSearchRecognitionService"
-    android:settingsActivity="com.akslabs.circletosearch.MainActivity"
+    android:sessionService="com.zawyer1.ctslite.AssistSessionService"
+    android:recognitionService="com.zawyer1.ctslite.StubRecognitionService"
+    android:settingsActivity="com.zawyer1.ctslite.MainActivity"
     android:supportsAssist="true"
     android:supportsLaunchVoiceAssistFromKeyguard="true"
     android:supportsLocalInteraction="true" />

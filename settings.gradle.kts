@@ -1,7 +1,7 @@
 /*
  *
  *  * Copyright (C) 2025 AKS-Labs (original author)
- *  *
+ *  * Copyright (C) 2026 Zawyer1 (fork author)
  *  * This program is free software: you can redistribute it and/or modify
  *  * it under the terms of the GNU General Public License as published by
  *  * the Free Software Foundation, either version 3 of the License, or
@@ -42,5 +42,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "CircleToSearch"
+rootProject.name = "CTS Lite"
 include(":app")

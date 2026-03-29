@@ -1,6 +1,7 @@
 /*
  *
  *  * Copyright (C) 2025 AKS-Labs (original author)
+    *  * Modifications Copyright (C) 2026 Zawyer1
  *  *
  *  * This program is free software: you can redistribute it and/or modify
  *  * it under the terms of the GNU General Public License as published by
@@ -24,22 +25,20 @@ plugins {
 }
 
 android {
-    namespace = "com.akslabs.circletosearch"
+    namespace = "com.zawyer1.ctslite"
     compileSdk {
         version = release(36)
     }
 
 
     defaultConfig {
-        applicationId = "com.akslabs.circletosearch"
-        minSdk = 29
+        applicationId = "com.zawyer1.ctslite"
+        minSdk = 30
         targetSdk = 36
-        versionCode = 6
-        versionName = "0.4"
+        versionCode = 1
+        versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        
-        resourceConfigurations += listOf("en")
     }
 
     buildTypes {
@@ -50,24 +49,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-        }
-        
-        getByName("debug") {
-            isMinifyEnabled = true
-            isShrinkResources = true
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
-        }
-    }
-
-    splits {
-        abi {
-            isEnable = true
-            reset()
-            include("arm64-v8a", "armeabi-v7a")
-            isUniversalApk = false
+            // Enable R8 full mode for more aggressive optimization
+            // This is usually done in gradle.properties, but can be influenced here indirectly
+            // by using the "proguard-android-optimize.txt" which includes optimization rules.
         }
     }
     compileOptions {
@@ -108,7 +92,4 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
     implementation("androidx.webkit:webkit:1.9.0")
-    implementation("com.google.code.gson:gson:2.10.1")
-    implementation("com.github.adaptech-cz.Tesseract4Android:tesseract4android:4.7.0")
-    implementation("com.google.zxing:core:3.5.4")
 }

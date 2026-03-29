@@ -2,6 +2,8 @@
 <!--
   ~ /*
   ~  * Copyright (C) 2025 AKS-Labs (original author)
+    *  * Modifications Copyright (C) 2026 Zawyer1
+  ~  * Modifications Copyright (C) 2025 Fork Contributors
   ~  *
   ~  * This program is free software: you can redistribute it and/or modify
   ~  * it under the terms of the GNU General Public License as published by
@@ -18,14 +20,36 @@
   ~  */
   -->
 
+<!--
+    FORK CHANGES vs original manifest:
+
+    PERMISSIONS REMOVED:
+      - android.permission.BIND_ACCESSIBILITY_SERVICE  (no longer used)
+      - android.permission.FOREGROUND_SERVICE          (only needed by AccessibilityService overlay)
+      - android.permission.WRITE_EXTERNAL_STORAGE      (only needed by AccessibilityService features)
+      - android.permission.MANAGE_EXTERNAL_STORAGE     (only needed by AccessibilityService features)
+      - android.permission.QUERY_ALL_PACKAGES          (only needed for OPEN_APP action in AccessibilityService)
+
+    SERVICES / ACTIVITIES REMOVED:
+      - CircleToSearchAccessibilityService  (deleted — was the accessibility overlay service)
+      - CircleToSearchRecognitionService    (deleted — was a stub required by assist_service_config)
+      - CircleToSearchTileService           (deleted — was the Quick Settings tile)
+      - TileTriggerActivity                 (deleted — was the Quick Settings tile launcher)
+
+    RETAINED:
+      - MainActivity
+      - CircleToSearchVoiceService          (registers app as an assistant in Android settings)
+      - AssistSessionService                (handles screenshot delivery via onHandleScreenshot)
+      - OverlayActivity                     (the crop/draw/search UI — core functionality)
+      - FileProvider                        (for sharing cropped images to search engines)
+      - INTERNET, VIBRATE permissions
+-->
+
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.BIND_ACCESSIBILITY_SERVICE" />
     <uses-permission android:name="android.permission.VIBRATE" />
-    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
 
     <application
         android:allowBackup="true"
@@ -37,8 +61,8 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.CircleToSearch"
         android:enableOnBackInvokedCallback="true"
-        android:extractNativeLibs="true"
         tools:targetApi="31">
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -46,25 +70,15 @@
             android:theme="@style/Theme.CircleToSearch">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
-        <service
-            android:name=".CircleToSearchAccessibilityService"
-            android:exported="true"
-            android:label="@string/app_name"
-            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
-            <intent-filter>
-                <action android:name="android.accessibilityservice.AccessibilityService" />
-            </intent-filter>
-
-            <meta-data
-                android:name="android.accessibilityservice"
-                android:resource="@xml/accessibility_service_config" />
-        </service>
-
+        <!--
+            VoiceInteractionService: makes the app appear in Android's
+            "Default assistant" settings. No screenshot or accessibility
+            permissions required.
+        -->
         <service
             android:name=".CircleToSearchVoiceService"
             android:exported="true"
@@ -77,22 +91,30 @@
                 android:resource="@xml/assist_service_config" />
         </service>
 
+        <!--
+            VoiceInteractionSessionService: receives the screenshot bitmap via
+            onHandleScreenshot() when the assistant is invoked (long-press home /
+            edge-swipe up). This is the sole capture mechanism in this fork.
+        -->
         <service
             android:name=".AssistSessionService"
             android:permission="android.permission.BIND_VOICE_INTERACTION"
             android:exported="true" />
-
         <service
-            android:name=".CircleToSearchRecognitionService"
-            android:label="@string/app_name"
+            android:name=".StubRecognitionService"
             android:exported="true"
-            android:permission="android.permission.BIND_VOICE_INTERACTION">
+            android:permission="android.permission.BIND_RECOGNITION_SERVICE">
             <intent-filter>
                 <action android:name="android.speech.RecognitionService" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </service>
 
+        <!--
+            OverlayActivity: the transparent full-screen crop/draw/search UI.
+            Launched by AssistSessionService after the screenshot is stored
+            in BitmapRepository.
+        -->
         <activity
             android:name=".OverlayActivity"
             android:exported="false"
@@ -100,36 +122,15 @@
             android:excludeFromRecents="true"
             android:launchMode="singleInstance" />
 
-        <activity
-            android:name=".TileTriggerActivity"
-            android:exported="false"
-            android:theme="@android:style/Theme.Translucent.NoTitleBar"
-            android:excludeFromRecents="true"
-            android:taskAffinity=""
-            android:launchMode="singleInstance" />
-
-        <service
-            android:name=".CircleToSearchTileService"
-            android:exported="true"
-            android:icon="@drawable/ic_qs_circle_to_search"
-            android:label="Circle to Search"
-            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
-            <intent-filter>
-                <action android:name="android.service.quicksettings.action.QS_TILE" />
-            </intent-filter>
-        </service>
-
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="com.akslabs.circletosearch.fileprovider"
+            android:authorities="com.zawyer1.ctslite.fileprovider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
-
-        <!-- WebViewActivity removed - not implemented -->
 
     </application>
 

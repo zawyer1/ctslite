@@ -1,6 +1,7 @@
 <!--
   ~ /*
   ~  * Copyright (C) 2025 AKS-Labs (original author)
+    *  * Modifications Copyright (C) 2026 Zawyer1
   ~  *
   ~  * This program is free software: you can redistribute it and/or modify
   ~  * it under the terms of the GNU General Public License as published by
@@ -18,5 +19,5 @@
   -->
 
 <resources>
-    <string name="app_name">CircleToSearch</string>
+    <string name="app_name">CTS Lite</string>
 </resources>
