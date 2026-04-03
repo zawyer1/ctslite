@@ -25,16 +25,13 @@ import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -208,10 +205,6 @@ fun SetupScreen() {
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            LensOnlySwitch(context)
-
-            Spacer(modifier = Modifier.height(24.dp))
-
             Text(
                 text = "No Accessibility permission. No screen recording.\nNo background data collection.\n\nOriginally developed by AKS-Labs.\nForked as CTS Lite by Zawyer1.",
                 style = MaterialTheme.typography.bodySmall,
@@ -233,69 +226,3 @@ fun isDefaultAssistant(context: android.content.Context): Boolean {
 
 
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun LensOnlySwitch(context: android.content.Context) {
-    val uiPreferences = remember { com.zawyer1.ctslite.utils.UIPreferences(context) }
-    var isLensOnlyEnabled by remember { mutableStateOf(uiPreferences.isUseGoogleLensOnly()) }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(androidx.compose.foundation.shape.RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
-            .padding(16.dp)
-    ) {
-        Text(
-            text = "Search Method",
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(bottom = 12.dp)
-        )
-
-        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-            SegmentedButton(
-                shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                onClick = {
-                    isLensOnlyEnabled = false
-                    uiPreferences.setUseGoogleLensOnly(false)
-                },
-                selected = !isLensOnlyEnabled,
-                icon = { SegmentedButtonDefaults.Icon(!isLensOnlyEnabled) }
-            ) {
-                Text("Multi-Search Engines", style = MaterialTheme.typography.labelLarge)
-            }
-            SegmentedButton(
-                shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                onClick = {
-                    isLensOnlyEnabled = true
-                    uiPreferences.setUseGoogleLensOnly(true)
-                },
-                selected = isLensOnlyEnabled,
-                icon = { SegmentedButtonDefaults.Icon(isLensOnlyEnabled) }
-            ) {
-                Text("Google Lens", style = MaterialTheme.typography.labelLarge)
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(top = 8.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Info,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.secondary,
-                modifier = Modifier.size(16.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "Lens needs Google App installed. Degoogled users can use Multi-Search Engine mode instead.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}

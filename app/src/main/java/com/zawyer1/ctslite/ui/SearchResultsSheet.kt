@@ -59,9 +59,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.zawyer1.ctslite.data.SearchEngine
+import com.zawyer1.ctslite.data.SearchMode
 import com.zawyer1.ctslite.utils.ImageSearchUploader
 import com.zawyer1.ctslite.utils.ImageUtils
-import com.zawyer1.ctslite.utils.UIPreferences
 import com.zawyer1.ctslite.ui.components.searchWithGoogleLens
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -94,8 +94,7 @@ import androidx.compose.animation.core.updateTransition
  * @param onSelectedEngineChange Called when the user taps a different tab.
  * @param desktopModeEngines     The set of engines currently in desktop mode.
  * @param isDarkMode             Whether dark mode is active.
- * @param uiPreferences          Shared UIPreferences instance from the parent — avoids
- *                               creating a new instance on every LaunchedEffect execution.
+ * @param searchMode             The currently selected search mode.
  * @param webViewCache           Shared map for WebView instances.
  * @param onExpandSheet          Called when the sheet should expand (results ready).
  * @param onClose                Called when the overlay should close (Lens mode success).
@@ -110,7 +109,7 @@ fun SearchResultsSheet(
     onSelectedEngineChange: (SearchEngine) -> Unit,
     desktopModeEngines: Set<SearchEngine>,
     isDarkMode: Boolean,
-    uiPreferences: UIPreferences,
+    searchMode: SearchMode,
     webViewCache: MutableMap<SearchEngine, WebView>,
     onExpandSheet: () -> Unit,
     onClose: () -> Unit,
@@ -141,13 +140,13 @@ fun SearchResultsSheet(
         if (selectedBitmap == null) return@LaunchedEffect
         isLoading = true
 
-        // Google Lens only mode — hand off and close
-        if (uiPreferences.isUseGoogleLensOnly()) {
+        // Google Lens mode — hand off and close
+        if (searchMode == SearchMode.GoogleLens) {
             val path = ImageUtils.saveBitmap(context, selectedBitmap)
             val uri = android.net.Uri.fromFile(java.io.File(path))
             val success = searchWithGoogleLens(uri, context)
             if (success) { onClose(); return@LaunchedEffect }
-            android.util.Log.e("CircleToSearch", "Google Lens failed, falling back")
+            android.util.Log.e("CTS Lite", "Google Lens failed, falling back to Multi-Search")
         }
 
         // Expand the sheet now that we have something to show
@@ -202,7 +201,7 @@ fun SearchResultsSheet(
         onSearchUrlChanged(preloadedUrls[selectedEngine])
     }
 
-    androidx.compose.foundation.layout.Column(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .fillMaxHeight()

@@ -35,8 +35,8 @@ android {
         applicationId = "com.zawyer1.ctslite"
         minSdk = 30
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -63,9 +63,7 @@ android {
     }
     // Fixed dependenciesInfo block
     dependenciesInfo {
-        @Suppress("UnstableApiUsage")
         includeInApk = false
-        @Suppress("UnstableApiUsage")
         includeInBundle = false
     }
     buildFeatures {
@@ -90,6 +88,6 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     implementation("androidx.compose.material:material-icons-extended")
-    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
-    implementation("androidx.webkit:webkit:1.9.0")
+    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.2.0")
+    implementation("androidx.webkit:webkit:1.15.0")
 }

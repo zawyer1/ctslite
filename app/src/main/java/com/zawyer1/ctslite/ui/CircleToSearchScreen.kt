@@ -23,12 +23,15 @@ package com.zawyer1.ctslite.ui
 import android.graphics.Bitmap
 import android.webkit.WebView
 import androidx.activity.compose.BackHandler
+import androidx.core.net.toUri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -36,13 +39,19 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.ContainedLoadingIndicator
@@ -64,8 +73,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -75,6 +85,7 @@ import com.zawyer1.ctslite.ui.theme.OverlayGradientColors
 import com.zawyer1.ctslite.utils.FriendlyMessageManager
 import com.zawyer1.ctslite.utils.UIPreferences
 import com.zawyer1.ctslite.data.SearchEngine
+import com.zawyer1.ctslite.data.SearchMode
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -138,10 +149,12 @@ fun CircleToSearchScreen(
     }
     var isDarkMode by remember { mutableStateOf(uiPreferences.isDarkMode()) }
     var showGradientBorder by remember { mutableStateOf(uiPreferences.isShowGradientBorder()) }
+    var searchMode by remember { mutableStateOf(uiPreferences.getSearchMode()) }
 
     LaunchedEffect(isDarkMode) { uiPreferences.setDarkMode(isDarkMode) }
     LaunchedEffect(showGradientBorder) { uiPreferences.setShowGradientBorder(showGradientBorder) }
     LaunchedEffect(desktopModeEngines) { uiPreferences.setDesktopModeEngines(desktopModeEngines) }
+    LaunchedEffect(searchMode) { uiPreferences.setSearchMode(searchMode) }
 
     // WebView cache — SearchResultsSheet writes, BackHandler + header menu reads
     val webViews = remember { mutableMapOf<SearchEngine, WebView>() }
@@ -175,7 +188,9 @@ fun CircleToSearchScreen(
 
     BottomSheetScaffold(
         scaffoldState = scaffoldState,
-        sheetPeekHeight = (LocalConfiguration.current.screenHeightDp.dp * 0.55f),
+        sheetPeekHeight = with(LocalDensity.current) {
+            (LocalWindowInfo.current.containerSize.height * 0.55f).toDp()
+        },
         sheetContainerColor = Color.Transparent,
         sheetContentColor = MaterialTheme.colorScheme.onSurface,
         sheetDragHandle = { BottomSheetDefaults.DragHandle() },
@@ -189,7 +204,7 @@ fun CircleToSearchScreen(
                 onSelectedEngineChange = { selectedEngine = it },
                 desktopModeEngines = desktopModeEngines,
                 isDarkMode = isDarkMode,
-                uiPreferences = uiPreferences,
+                searchMode = searchMode,
                 webViewCache = webViews,
                 onExpandSheet = { scope.launch { scaffoldState.bottomSheetState.expand() } },
                 onClose = onClose,
@@ -260,7 +275,8 @@ fun CircleToSearchScreen(
 
             // Step 2: Header
             OverlayHeader(
-                selectedEngine = selectedEngine,
+                searchMode = searchMode,
+                onModeChange = { searchMode = it },
                 isDesktopMode = desktopModeEngines.contains(selectedEngine),
                 isDarkMode = isDarkMode,
                 showGradientBorder = showGradientBorder,
@@ -290,7 +306,7 @@ fun CircleToSearchScreen(
                             context.startActivity(
                                 android.content.Intent(
                                     android.content.Intent.ACTION_VIEW,
-                                    android.net.Uri.parse(currentUrl)
+                                    currentUrl.toUri()
                                 )
                             )
                         } catch (e: Exception) {
@@ -322,29 +338,67 @@ fun CircleToSearchScreen(
                         }
                     }
             ) {
-                // Selected image thumbnail on the left, or empty space
-                if (selectedBitmap != null) {
-                    Image(
-                        bitmap = selectedBitmap!!.asImageBitmap(),
-                        contentDescription = "Selected",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .align(Alignment.CenterStart)
-                            .size(40.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .border(1.dp, Color.White.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Left side — Search Full Screen button when no selection,
+                    // thumbnail when a selection has been made
+                    if (selectedBitmap != null) {
+                        Image(
+                            bitmap = selectedBitmap!!.asImageBitmap(),
+                            contentDescription = "Selected",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .border(1.dp, Color.White.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                        )
+                    } else {
+                        OutlinedButton(
+                            onClick = {
+                                if (screenshot != null) {
+                                    selectedBitmap = screenshot
+                                    scope.launch { scaffoldState.bottomSheetState.expand() }
+                                }
+                            },
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = Color.White
+                            ),
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp, Color.White.copy(alpha = 0.4f)
+                            ),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                                horizontal = 12.dp, vertical = 6.dp
+                            ),
+                            modifier = Modifier.height(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Full Screen",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    // App label on the right
+                    Text(
+                        text = "CTS Lite",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
                     )
                 }
-
-                // App label on the right
-                Text(
-                    text = "Circle to Search",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    ),
-                    modifier = Modifier.align(Alignment.CenterEnd)
-                )
             }
 
 

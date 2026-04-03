@@ -22,7 +22,9 @@ package com.zawyer1.ctslite.utils
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import com.zawyer1.ctslite.data.SearchEngine
+import com.zawyer1.ctslite.data.SearchMode
 
 class UIPreferences(context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("ui_prefs", Context.MODE_PRIVATE)
@@ -34,14 +36,22 @@ class UIPreferences(context: Context) {
         private const val KEY_SHOW_GRADIENT_BORDER = "show_gradient_border"
         private const val KEY_SHOW_FRIENDLY_MESSAGES = "show_friendly_messages"
         private const val KEY_SEARCH_ENGINE_ORDER = "search_engine_order"
-        private const val KEY_USE_GOOGLE_LENS_ONLY = "use_google_lens_only"
+        private const val KEY_SEARCH_MODE = "search_mode"
     }
 
-    fun isUseGoogleLensOnly(): Boolean = prefs.getBoolean(KEY_USE_GOOGLE_LENS_ONLY, false)
-    fun setUseGoogleLensOnly(isEnabled: Boolean) = prefs.edit().putBoolean(KEY_USE_GOOGLE_LENS_ONLY, isEnabled).apply()
+    fun getSearchMode(): SearchMode {
+        val saved = prefs.getString(KEY_SEARCH_MODE, SearchMode.MultiSearch.name)
+        return try {
+            SearchMode.valueOf(saved ?: SearchMode.MultiSearch.name)
+        } catch (_: IllegalArgumentException) {
+            SearchMode.MultiSearch
+        }
+    }
+
+    fun setSearchMode(mode: SearchMode) =
+        prefs.edit { putString(KEY_SEARCH_MODE, mode.name) }
 
     fun isDesktopMode(): Boolean = prefs.getBoolean(KEY_DESKTOP_MODE, false)
-    fun setDesktopMode(isEnabled: Boolean) = prefs.edit().putBoolean(KEY_DESKTOP_MODE, isEnabled).apply()
 
     /**
      * Returns the set of engines currently in desktop mode, persisted across sessions.
@@ -52,7 +62,6 @@ class UIPreferences(context: Context) {
     fun getDesktopModeEngines(allEngines: List<SearchEngine>): Set<SearchEngine> {
         val saved = prefs.getString(KEY_DESKTOP_MODE_ENGINES, null)
         return if (saved == null) {
-            // Migrate from legacy global flag
             if (isDesktopMode()) allEngines.toSet() else emptySet()
         } else if (saved.isEmpty()) {
             emptySet()
@@ -67,22 +76,20 @@ class UIPreferences(context: Context) {
      * Persists the set of engines currently in desktop mode.
      */
     fun setDesktopModeEngines(engines: Set<SearchEngine>) {
-        prefs.edit()
-            .putString(KEY_DESKTOP_MODE_ENGINES, engines.joinToString(",") { it.name })
-            .apply()
+        prefs.edit { putString(KEY_DESKTOP_MODE_ENGINES, engines.joinToString(",") { it.name }) }
     }
 
     fun isDarkMode(): Boolean = prefs.getBoolean(KEY_DARK_MODE, false)
-    fun setDarkMode(isEnabled: Boolean) = prefs.edit().putBoolean(KEY_DARK_MODE, isEnabled).apply()
+    fun setDarkMode(isEnabled: Boolean) = prefs.edit { putBoolean(KEY_DARK_MODE, isEnabled) }
 
     fun isShowGradientBorder(): Boolean = prefs.getBoolean(KEY_SHOW_GRADIENT_BORDER, true)
-    fun setShowGradientBorder(isEnabled: Boolean) = prefs.edit().putBoolean(KEY_SHOW_GRADIENT_BORDER, isEnabled).apply()
+    fun setShowGradientBorder(isEnabled: Boolean) = prefs.edit { putBoolean(KEY_SHOW_GRADIENT_BORDER, isEnabled) }
 
     fun isShowFriendlyMessages(): Boolean = prefs.getBoolean(KEY_SHOW_FRIENDLY_MESSAGES, true)
-    fun setShowFriendlyMessages(isEnabled: Boolean) = prefs.edit().putBoolean(KEY_SHOW_FRIENDLY_MESSAGES, isEnabled).apply()
+    fun setShowFriendlyMessages(isEnabled: Boolean) = prefs.edit { putBoolean(KEY_SHOW_FRIENDLY_MESSAGES, isEnabled) }
 
     fun getSearchEngineOrder(): String? = prefs.getString(KEY_SEARCH_ENGINE_ORDER, null)
-    fun setSearchEngineOrder(order: String) = prefs.edit().putString(KEY_SEARCH_ENGINE_ORDER, order).apply()
+    fun setSearchEngineOrder(order: String) = prefs.edit { putString(KEY_SEARCH_ENGINE_ORDER, order) }
 
     /**
      * Returns the search engine list in the user's preferred order.
@@ -103,8 +110,6 @@ class UIPreferences(context: Context) {
         }
         allEngines.forEach { if (!ordered.contains(it)) ordered.add(it) }
 
-        // If the resolved order differs from what was saved (e.g. removed engines
-        // were present), rewrite preferences so stale names are cleaned up.
         val cleanedOrderString = ordered.joinToString(",") { it.name }
         if (cleanedOrderString != orderString) {
             setSearchEngineOrder(cleanedOrderString)

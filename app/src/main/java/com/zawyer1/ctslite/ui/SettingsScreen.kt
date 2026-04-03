@@ -46,17 +46,12 @@ fun SettingsScreen(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     
     var showFriendlyMessages by remember { mutableStateOf(uiPreferences.isShowFriendlyMessages()) }
-    var useGoogleLensOnly by remember { mutableStateOf(uiPreferences.isUseGoogleLensOnly()) }
     val engineOrder = remember {
         mutableStateListOf(*uiPreferences.getOrderedSearchEngines().toTypedArray())
     }
 
     LaunchedEffect(showFriendlyMessages) {
         uiPreferences.setShowFriendlyMessages(showFriendlyMessages)
-    }
-
-    LaunchedEffect(useGoogleLensOnly) {
-        uiPreferences.setUseGoogleLensOnly(useGoogleLensOnly)
     }
 
     LaunchedEffect(engineOrder.toList()) {
@@ -96,43 +91,6 @@ fun SettingsScreen(
                 checked = showFriendlyMessages,
                 onCheckedChange = { showFriendlyMessages = it }
             )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Search Method Section
-            SearchMethodSelector(
-                isLensOnly = useGoogleLensOnly,
-                onMethodChange = { useGoogleLensOnly = it }
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            // Explanatory Note
-            Surface(
-                color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f),
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier.padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Info,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.secondary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = "Lens mode needs the Google App to work its magic! 🪄 Degoogled? Multi-Search mode has your back! 🚀",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer,
-                        lineHeight = 16.sp,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
 
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -295,61 +253,6 @@ fun EngineOrderItem(
                 contentDescription = "Move Down",
                 tint = if (!isLast) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
             )
-        }
-    }
-}
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun SearchMethodSelector(
-    isLensOnly: Boolean,
-    onMethodChange: (Boolean) -> Unit
-) {
-    Column {
-        Text(
-            text = "SEARCH METHOD",
-            style = MaterialTheme.typography.labelLarge.copy(
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.sp
-            ),
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(bottom = 12.dp)
-        )
-
-        SingleChoiceSegmentedButtonRow(
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            SegmentedButton(
-                shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                onClick = { onMethodChange(false) },
-                selected = !isLensOnly,
-                icon = { SegmentedButtonDefaults.Icon(!isLensOnly) },
-                colors = SegmentedButtonDefaults.colors(
-                    activeContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                    activeContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.ManageSearch, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Multi-Search", style = MaterialTheme.typography.labelLarge)
-                }
-            }
-            SegmentedButton(
-                shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                onClick = { onMethodChange(true) },
-                selected = isLensOnly,
-                icon = { SegmentedButtonDefaults.Icon(isLensOnly) },
-                colors = SegmentedButtonDefaults.colors(
-                    activeContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                    activeContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.AutoFixHigh, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Google Lens", style = MaterialTheme.typography.labelLarge)
-                }
-            }
         }
     }
 }
