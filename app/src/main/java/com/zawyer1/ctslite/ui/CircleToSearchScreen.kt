@@ -277,6 +277,7 @@ fun CircleToSearchScreen(
             OverlayHeader(
                 searchMode = searchMode,
                 onModeChange = { searchMode = it },
+                hasActiveSearch = searchUrl != null,
                 isDesktopMode = desktopModeEngines.contains(selectedEngine),
                 isDarkMode = isDarkMode,
                 showGradientBorder = showGradientBorder,

@@ -62,6 +62,7 @@ fun SetupScreen() {
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     val privacyPreferences = remember { com.zawyer1.ctslite.utils.PrivacyPreferences(context) }
     var showPrivacyDialog by remember { mutableStateOf(!privacyPreferences.hasAcceptedPrivacyPolicy()) }
+    var showSettings by remember { mutableStateOf(false) }
 
     var isDefaultAssistant by remember { mutableStateOf(isDefaultAssistant(context)) }
 
@@ -75,6 +76,10 @@ fun SetupScreen() {
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
+    if (showSettings) {
+        AppSettingsScreen(onBack = { showSettings = false })
+        return
+    }
 
     if (showPrivacyDialog) {
         PrivacyDialog(
@@ -205,6 +210,25 @@ fun SetupScreen() {
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            Button(
+                onClick = { showSettings = true },
+                modifier = Modifier.fillMaxWidth(),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Settings,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Settings",
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
+                )
+            }
+
+            Spacer(modifier = Modifier.weight(1f))
+
             Text(
                 text = "No Accessibility permission. No screen recording.\nNo background data collection.\n\nOriginally developed by AKS-Labs.\nForked as CTS Lite by Zawyer1.",
                 style = MaterialTheme.typography.bodySmall,
@@ -212,7 +236,7 @@ fun SetupScreen() {
                 textAlign = TextAlign.Center
             )
 
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 

@@ -74,6 +74,8 @@ import com.zawyer1.ctslite.data.SearchMode
  *
  * @param searchMode         The currently active search mode.
  * @param onModeChange       Called when the user selects a different mode.
+ * @param hasActiveSearch    Whether a search URL currently exists. Controls whether
+ *                           Refresh, Copy URL, and Open in Browser are enabled.
  * @param isDesktopMode      Whether the selected engine is currently in desktop mode.
  * @param isDarkMode         Whether dark mode is currently enabled.
  * @param showGradientBorder Whether the gradient border is currently visible.
@@ -91,6 +93,7 @@ import com.zawyer1.ctslite.data.SearchMode
 fun OverlayHeader(
     searchMode: SearchMode,
     onModeChange: (SearchMode) -> Unit,
+    hasActiveSearch: Boolean,
     isDesktopMode: Boolean,
     isDarkMode: Boolean,
     showGradientBorder: Boolean,
@@ -221,17 +224,20 @@ fun OverlayHeader(
                 DropdownMenuItem(
                     text = { Text("Refresh") },
                     leadingIcon = { Icon(Icons.Default.Refresh, contentDescription = null) },
-                    onClick = { onRefresh(); showMenu = false }
+                    onClick = { onRefresh(); showMenu = false },
+                    enabled = hasActiveSearch
                 )
                 DropdownMenuItem(
                     text = { Text("Copy URL") },
                     leadingIcon = { Icon(Icons.Default.ContentCopy, contentDescription = null) },
-                    onClick = { onCopyUrl(); showMenu = false }
+                    onClick = { onCopyUrl(); showMenu = false },
+                    enabled = hasActiveSearch
                 )
                 DropdownMenuItem(
                     text = { Text("Open in Browser") },
                     leadingIcon = { Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null) },
-                    onClick = { onOpenInBrowser(); showMenu = false }
+                    onClick = { onOpenInBrowser(); showMenu = false },
+                    enabled = hasActiveSearch
                 )
                 DropdownMenuItem(
                     text = { Text("Settings") },
