@@ -342,8 +342,7 @@ fun CircleToSearchScreen(
                     modifier = Modifier.fillMaxSize(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Left side — Search Full Screen button when no selection,
-                    // thumbnail when a selection has been made
+                    // Left side — thumbnail when a selection has been made, empty otherwise
                     if (selectedBitmap != null) {
                         Image(
                             bitmap = selectedBitmap!!.asImageBitmap(),
@@ -354,43 +353,46 @@ fun CircleToSearchScreen(
                                 .clip(RoundedCornerShape(12.dp))
                                 .border(1.dp, Color.White.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
                         )
-                    } else {
-                        OutlinedButton(
-                            onClick = {
-                                if (screenshot != null) {
-                                    selectedBitmap = screenshot
-                                    scope.launch { scaffoldState.bottomSheetState.expand() }
-                                }
-                            },
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = Color.White
-                            ),
-                            border = androidx.compose.foundation.BorderStroke(
-                                1.dp, Color.White.copy(alpha = 0.4f)
-                            ),
-                            contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                                horizontal = 12.dp, vertical = 6.dp
-                            ),
-                            modifier = Modifier.height(36.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Search,
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "Full Screen",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontWeight = FontWeight.Bold
-                                )
-                            )
-                        }
                     }
 
                     Spacer(modifier = Modifier.weight(1f))
 
-                    // App label on the right
+                    // Centre — Full Screen button, always visible
+                    OutlinedButton(
+                        onClick = {
+                            if (screenshot != null) {
+                                selectedBitmap = screenshot
+                                scope.launch { scaffoldState.bottomSheetState.expand() }
+                            }
+                        },
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = Color.White
+                        ),
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp, Color.White.copy(alpha = 0.4f)
+                        ),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                            horizontal = 12.dp, vertical = 6.dp
+                        ),
+                        modifier = Modifier.height(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Full Screen",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    // Right — app label
                     Text(
                         text = "CTS Lite",
                         style = MaterialTheme.typography.titleMedium.copy(
