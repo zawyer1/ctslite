@@ -144,6 +144,7 @@ fun CircleToSearchScreen(
     var selectedEngine by remember(searchEngines) { mutableStateOf<SearchEngine>(searchEngines.first()) }
     var selectedBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var searchUrl by remember { mutableStateOf<String?>(null) }
+    var imageUrl by remember { mutableStateOf<String?>(null) }
     var desktopModeEngines by remember {
         mutableStateOf<Set<SearchEngine>>(uiPreferences.getDesktopModeEngines(searchEngines))
     }
@@ -209,6 +210,7 @@ fun CircleToSearchScreen(
                 onExpandSheet = { scope.launch { scaffoldState.bottomSheetState.expand() } },
                 onClose = onClose,
                 onSearchUrlChanged = { searchUrl = it },
+                onImageUrlChanged = { imageUrl = it },
             )
         }
     ) { _ ->
@@ -278,6 +280,7 @@ fun CircleToSearchScreen(
                 searchMode = searchMode,
                 onModeChange = { searchMode = it },
                 hasActiveSearch = searchUrl != null,
+                hasImageUrl = imageUrl != null,
                 isDesktopMode = desktopModeEngines.contains(selectedEngine),
                 isDarkMode = isDarkMode,
                 showGradientBorder = showGradientBorder,
@@ -297,6 +300,15 @@ fun CircleToSearchScreen(
                                 as android.content.ClipboardManager
                         clipboard.setPrimaryClip(
                             android.content.ClipData.newPlainText("Search URL", searchUrl)
+                        )
+                    }
+                },
+                onCopyImageUrl = {
+                    if (imageUrl != null) {
+                        val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
+                                as android.content.ClipboardManager
+                        clipboard.setPrimaryClip(
+                            android.content.ClipData.newPlainText("Image URL", imageUrl)
                         )
                     }
                 },

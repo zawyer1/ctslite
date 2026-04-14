@@ -75,7 +75,9 @@ import com.zawyer1.ctslite.data.SearchMode
  * @param searchMode         The currently active search mode.
  * @param onModeChange       Called when the user selects a different mode.
  * @param hasActiveSearch    Whether a search URL currently exists. Controls whether
- *                           Refresh, Copy URL, and Open in Browser are enabled.
+ *                           Refresh, Copy Search URL, and Open in Browser are enabled.
+ * @param hasImageUrl        Whether a hosted image URL currently exists. Controls whether
+ *                           Copy Image URL is enabled.
  * @param isDesktopMode      Whether the selected engine is currently in desktop mode.
  * @param isDarkMode         Whether dark mode is currently enabled.
  * @param showGradientBorder Whether the gradient border is currently visible.
@@ -94,6 +96,7 @@ fun OverlayHeader(
     searchMode: SearchMode,
     onModeChange: (SearchMode) -> Unit,
     hasActiveSearch: Boolean,
+    hasImageUrl: Boolean,
     isDesktopMode: Boolean,
     isDarkMode: Boolean,
     showGradientBorder: Boolean,
@@ -103,6 +106,7 @@ fun OverlayHeader(
     onToggleBorder: () -> Unit,
     onRefresh: () -> Unit,
     onCopyUrl: () -> Unit,
+    onCopyImageUrl: () -> Unit,
     onOpenInBrowser: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
@@ -228,10 +232,16 @@ fun OverlayHeader(
                     enabled = hasActiveSearch
                 )
                 DropdownMenuItem(
-                    text = { Text("Copy URL") },
+                    text = { Text("Copy Search URL") },
                     leadingIcon = { Icon(Icons.Default.ContentCopy, contentDescription = null) },
                     onClick = { onCopyUrl(); showMenu = false },
                     enabled = hasActiveSearch
+                )
+                DropdownMenuItem(
+                    text = { Text("Copy Image URL") },
+                    leadingIcon = { Icon(Icons.Default.ContentCopy, contentDescription = null) },
+                    onClick = { onCopyImageUrl(); showMenu = false },
+                    enabled = hasImageUrl
                 )
                 DropdownMenuItem(
                     text = { Text("Open in Browser") },

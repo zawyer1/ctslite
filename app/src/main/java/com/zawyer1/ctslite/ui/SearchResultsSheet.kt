@@ -99,6 +99,7 @@ import androidx.compose.animation.core.updateTransition
  * @param onExpandSheet          Called when the sheet should expand (results ready).
  * @param onClose                Called when the overlay should close (Lens mode success).
  * @param onSearchUrlChanged     Called with the current search URL whenever it changes.
+ * @param onImageUrlChanged      Called with the Litterbox/Catbox image URL once uploaded.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -114,6 +115,7 @@ fun SearchResultsSheet(
     onExpandSheet: () -> Unit,
     onClose: () -> Unit,
     onSearchUrlChanged: (String?) -> Unit,
+    onImageUrlChanged: (String?) -> Unit,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -129,6 +131,7 @@ fun SearchResultsSheet(
         hostedImageUrl = null
         uploadFailed = false
         onSearchUrlChanged(null)
+        onImageUrlChanged(null)
         preloadedUrls.clear()
         initializedEngines.clear()
         webViewCache.values.forEach { it.destroy() }
@@ -155,8 +158,10 @@ fun SearchResultsSheet(
         // Upload the image if not already done
         if (hostedImageUrl == null) {
             val url = ImageSearchUploader.uploadToImageHost(selectedBitmap)
-            if (url != null) hostedImageUrl = url
-            else {
+            if (url != null) {
+                hostedImageUrl = url
+                onImageUrlChanged(url)
+            } else {
                 isLoading = false
                 uploadFailed = true
                 return@LaunchedEffect
