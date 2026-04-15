@@ -1,7 +1,7 @@
 /*
  *
  *  * Copyright (C) 2025 AKS-Labs (original author)
-    *  * Modifications Copyright (C) 2026 Zawyer1
+ *  * Modifications Copyright (C) 2026 Zawyer1
  *  *
  *  * This program is free software: you can redistribute it and/or modify
  *  * it under the terms of the GNU General Public License as published by
@@ -35,8 +35,8 @@ android {
         applicationId = "com.zawyer1.ctslite"
         minSdk = 30
         targetSdk = 36
-        versionCode = 2
-        versionName = "1.1.0"
+        versionCode = 3
+        versionName = "1.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
