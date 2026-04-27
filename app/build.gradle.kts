@@ -30,6 +30,23 @@ android {
         version = release(36)
     }
 
+    flavorDimensions += "version"
+
+    productFlavors {
+        create("production") {
+            dimension = "version"
+            applicationId = "com.zawyer1.ctslite"
+            versionNameSuffix = ""
+            buildConfigField("String", "FILE_PROVIDER_AUTHORITY", "\"com.zawyer1.ctslite.fileprovider\"")
+        }
+        create("beta") {
+            dimension = "version"
+            applicationId = "com.zawyer1.ctslite.beta"
+            versionNameSuffix = "-beta"
+            resValue("string", "app_name", "CTS Lite Beta")
+            buildConfigField("String", "FILE_PROVIDER_AUTHORITY", "\"com.zawyer1.ctslite.beta.fileprovider\"")
+        }
+    }
 
     defaultConfig {
         applicationId = "com.zawyer1.ctslite"
@@ -68,6 +85,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

@@ -11,6 +11,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.core.content.FileProvider
 import java.io.File
+import com.zawyer1.ctslite.BuildConfig
 
 
 
@@ -44,7 +45,7 @@ fun searchWithGoogleLens(uri: Uri, context: Context): Boolean {
 
                 FileProvider.getUriForFile(
                     context,
-                    "com.zawyer1.ctslite.fileprovider",
+                    BuildConfig.FILE_PROVIDER_AUTHORITY,
                     file
                 )
             } catch (e: Exception) {
