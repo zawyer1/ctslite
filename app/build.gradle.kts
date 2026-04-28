@@ -108,4 +108,5 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.2.0")
     implementation("androidx.webkit:webkit:1.15.0")
+    implementation("com.google.mlkit:barcode-scanning:17.3.0")
 }

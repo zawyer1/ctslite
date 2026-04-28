@@ -24,11 +24,12 @@ package com.zawyer1.ctslite.data
  * Represents the search method the user has selected in the overlay header.
  * MultiSearch — uploads image to Litterbox/Catbox and opens results in WebView tabs.
  * GoogleLens  — hands the image directly to the Google Lens app.
- * OCR         — reserved for future on-device text recognition (not yet implemented).
+ * QRScan      — decodes a QR code or barcode from the selected region on-device via ML Kit.
  */
 enum class SearchMode {
     MultiSearch,
-    GoogleLens
+    GoogleLens,
+    QRScan
 }
 
 sealed class SearchEngine(val displayName: String) {

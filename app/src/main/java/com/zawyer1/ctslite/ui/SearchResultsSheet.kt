@@ -63,6 +63,8 @@ import com.zawyer1.ctslite.data.SearchMode
 import com.zawyer1.ctslite.utils.ImageSearchUploader
 import com.zawyer1.ctslite.utils.ImageUtils
 import com.zawyer1.ctslite.ui.components.searchWithGoogleLens
+import com.zawyer1.ctslite.ui.components.QRResult
+import com.zawyer1.ctslite.ui.components.scanQRCode
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.animation.core.animateFloat
@@ -123,6 +125,7 @@ fun SearchResultsSheet(
     var hostedImageUrl by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(false) }
     var uploadFailed by remember { mutableStateOf(false) }
+    var qrResult by remember { mutableStateOf<QRResult?>(null) }
     val preloadedUrls = remember { mutableMapOf<SearchEngine, String>() }
     val initializedEngines = remember { mutableStateListOf<SearchEngine>() }
 
@@ -130,6 +133,7 @@ fun SearchResultsSheet(
     LaunchedEffect(selectedBitmap) {
         hostedImageUrl = null
         uploadFailed = false
+        qrResult = null
         onSearchUrlChanged(null)
         onImageUrlChanged(null)
         preloadedUrls.clear()
@@ -150,6 +154,14 @@ fun SearchResultsSheet(
             val success = searchWithGoogleLens(uri, context)
             if (success) { onClose(); return@LaunchedEffect }
             android.util.Log.e("CTS Lite", "Google Lens failed, falling back to Multi-Search")
+        }
+
+        // QR Scan mode — decode on-device, show result sheet
+        if (searchMode == SearchMode.QRScan) {
+            onExpandSheet()
+            isLoading = false
+            qrResult = scanQRCode(selectedBitmap)
+            return@LaunchedEffect
         }
 
         // Expand the sheet now that we have something to show
@@ -206,6 +218,13 @@ fun SearchResultsSheet(
         onSearchUrlChanged(preloadedUrls[selectedEngine])
     }
 
+    // QR Scan mode — show dedicated result sheet
+    if (searchMode == SearchMode.QRScan) {
+        QRResultSheet(result = qrResult)
+        return
+    }
+
+    // Multi-Search mode — tab row + WebViews
     Column(
         modifier = Modifier
             .fillMaxWidth()

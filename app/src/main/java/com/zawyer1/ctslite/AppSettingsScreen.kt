@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.BorderOuter
 import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -172,7 +173,7 @@ fun AppSettingsScreen(onBack: () -> Unit) {
 
             SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                 SegmentedButton(
-                    shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                    shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
                     onClick = { searchMode = SearchMode.MultiSearch },
                     selected = searchMode == SearchMode.MultiSearch,
                     icon = {
@@ -187,10 +188,10 @@ fun AppSettingsScreen(onBack: () -> Unit) {
                         activeContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 ) {
-                    Text("Multi-Search", style = MaterialTheme.typography.labelLarge)
+                    Text("Search", style = MaterialTheme.typography.labelLarge)
                 }
                 SegmentedButton(
-                    shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                    shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
                     onClick = { searchMode = SearchMode.GoogleLens },
                     selected = searchMode == SearchMode.GoogleLens,
                     icon = {
@@ -206,6 +207,24 @@ fun AppSettingsScreen(onBack: () -> Unit) {
                     )
                 ) {
                     Text("Google Lens", style = MaterialTheme.typography.labelLarge)
+                }
+                SegmentedButton(
+                    shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
+                    onClick = { searchMode = SearchMode.QRScan },
+                    selected = searchMode == SearchMode.QRScan,
+                    icon = {
+                        Icon(
+                            Icons.Default.QrCode,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    },
+                    colors = SegmentedButtonDefaults.colors(
+                        activeContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        activeContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                ) {
+                    Text("QR Scan", style = MaterialTheme.typography.labelLarge)
                 }
             }
 

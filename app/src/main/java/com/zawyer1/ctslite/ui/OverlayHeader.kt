@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.DesktopWindows
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Smartphone
@@ -131,12 +132,12 @@ fun OverlayHeader(
 
         Spacer(modifier = Modifier.width(8.dp))
 
-        // Mode selector — replaces the engine name label
+        // Mode selector — three buttons: Search, Lens, QR
         SingleChoiceSegmentedButtonRow(
             modifier = Modifier.weight(1f)
         ) {
             SegmentedButton(
-                shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
                 onClick = { onModeChange(SearchMode.MultiSearch) },
                 selected = searchMode == SearchMode.MultiSearch,
                 icon = {
@@ -153,13 +154,10 @@ fun OverlayHeader(
                     inactiveContentColor = Color.White
                 )
             ) {
-                Text(
-                    "Multi-Search",
-                    style = MaterialTheme.typography.labelMedium
-                )
+                Text("Search", style = MaterialTheme.typography.labelMedium)
             }
             SegmentedButton(
-                shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
                 onClick = { onModeChange(SearchMode.GoogleLens) },
                 selected = searchMode == SearchMode.GoogleLens,
                 icon = {
@@ -176,10 +174,27 @@ fun OverlayHeader(
                     inactiveContentColor = Color.White
                 )
             ) {
-                Text(
-                    "Lens",
-                    style = MaterialTheme.typography.labelMedium
+                Text("Lens", style = MaterialTheme.typography.labelMedium)
+            }
+            SegmentedButton(
+                shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
+                onClick = { onModeChange(SearchMode.QRScan) },
+                selected = searchMode == SearchMode.QRScan,
+                icon = {
+                    Icon(
+                        Icons.Default.QrCode,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                },
+                colors = SegmentedButtonDefaults.colors(
+                    activeContainerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f),
+                    activeContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    inactiveContainerColor = Color.Gray.copy(alpha = 0.3f),
+                    inactiveContentColor = Color.White
                 )
+            ) {
+                Text("QR", style = MaterialTheme.typography.labelMedium)
             }
         }
 
