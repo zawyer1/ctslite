@@ -37,6 +37,7 @@ import androidx.compose.material.icons.automirrored.filled.ManageSearch
 import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.BorderOuter
 import androidx.compose.material.icons.filled.ChatBubbleOutline
+import androidx.compose.material.icons.filled.CropFree
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -93,6 +94,7 @@ fun AppSettingsScreen(onBack: () -> Unit) {
     var searchMode by remember { mutableStateOf(uiPreferences.getSearchMode()) }
     var showGradientBorder by remember { mutableStateOf(uiPreferences.isShowGradientBorder()) }
     var isDarkMode by remember { mutableStateOf(uiPreferences.isDarkMode()) }
+    var squareSelection by remember { mutableStateOf(uiPreferences.isSquareSelection()) }
     val engineOrder = remember {
         mutableStateListOf(*uiPreferences.getOrderedSearchEngines().toTypedArray())
     }
@@ -101,6 +103,7 @@ fun AppSettingsScreen(onBack: () -> Unit) {
     LaunchedEffect(searchMode) { uiPreferences.setSearchMode(searchMode) }
     LaunchedEffect(showGradientBorder) { uiPreferences.setShowGradientBorder(showGradientBorder) }
     LaunchedEffect(isDarkMode) { uiPreferences.setDarkMode(isDarkMode) }
+    LaunchedEffect(squareSelection) { uiPreferences.setSquareSelection(squareSelection) }
     LaunchedEffect(engineOrder.toList()) {
         uiPreferences.setSearchEngineOrder(engineOrder.joinToString(",") { it.name })
     }
@@ -247,6 +250,14 @@ fun AppSettingsScreen(onBack: () -> Unit) {
                 icon = Icons.Default.DarkMode,
                 checked = isDarkMode,
                 onCheckedChange = { isDarkMode = it }
+            )
+
+            SettingsToggleItem(
+                title = "Rectangle Selection",
+                subtitle = "Draw a rectangle instead of a freehand selection",
+                icon = Icons.Default.CropFree,
+                checked = squareSelection,
+                onCheckedChange = { squareSelection = it }
             )
 
             Spacer(modifier = Modifier.height(24.dp))

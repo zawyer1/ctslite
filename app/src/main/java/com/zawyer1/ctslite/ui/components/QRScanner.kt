@@ -60,6 +60,9 @@ sealed class QRResult {
     /** Any other structured barcode type — contact, calendar, geo, etc. */
     data class Other(val raw: String, val typeName: String) : QRResult()
 
+    /** Multiple barcodes detected in the same image */
+    data class Multiple(val results: List<QRResult>) : QRResult()
+
     /** No barcode was found in the image */
     object NotFound : QRResult()
 
@@ -88,59 +91,56 @@ suspend fun scanQRCode(bitmap: Bitmap): QRResult = suspendCoroutine { continuati
                 return@addOnSuccessListener
             }
 
-            val barcode = barcodes.first()
-            val raw = barcode.rawValue ?: ""
-
-            val result = when (barcode.valueType) {
-                Barcode.TYPE_URL -> {
-                    val url = barcode.url?.url ?: raw
-                    // Distinguish intent:// URIs from regular URLs
-                    if (url.startsWith("intent://")) {
-                        QRResult.IntentUri(url)
-                    } else {
-                        QRResult.Url(url)
+            // Parse every detected barcode into a QRResult
+            fun parseBarcode(barcode: com.google.mlkit.vision.barcode.common.Barcode): QRResult {
+                val raw = barcode.rawValue ?: ""
+                return when (barcode.valueType) {
+                    Barcode.TYPE_URL -> {
+                        val url = barcode.url?.url ?: raw
+                        if (url.startsWith("intent://")) QRResult.IntentUri(url)
+                        else QRResult.Url(url)
                     }
-                }
-                Barcode.TYPE_TEXT -> {
-                    // Plain text may still contain an intent URI or URL not tagged as TYPE_URL
-                    when {
-                        raw.startsWith("intent://") -> QRResult.IntentUri(raw)
-                        raw.startsWith("http://") || raw.startsWith("https://") -> QRResult.Url(raw)
-                        else -> QRResult.PlainText(raw)
+                    Barcode.TYPE_TEXT -> {
+                        when {
+                            raw.startsWith("intent://") -> QRResult.IntentUri(raw)
+                            raw.startsWith("http://") || raw.startsWith("https://") -> QRResult.Url(raw)
+                            else -> QRResult.PlainText(raw)
+                        }
                     }
-                }
-                Barcode.TYPE_PHONE -> {
-                    QRResult.Phone(barcode.phone?.number ?: raw)
-                }
-                Barcode.TYPE_EMAIL -> {
-                    QRResult.Email(barcode.email?.address ?: raw)
-                }
-                Barcode.TYPE_WIFI -> {
-                    val wifi = barcode.wifi
-                    val encType = when (wifi?.encryptionType) {
-                        Barcode.WiFi.TYPE_WPA -> "WPA"
-                        Barcode.WiFi.TYPE_WEP -> "WEP"
-                        else -> "Open"
+                    Barcode.TYPE_PHONE -> QRResult.Phone(barcode.phone?.number ?: raw)
+                    Barcode.TYPE_EMAIL -> QRResult.Email(barcode.email?.address ?: raw)
+                    Barcode.TYPE_WIFI -> {
+                        val wifi = barcode.wifi
+                        val encType = when (wifi?.encryptionType) {
+                            Barcode.WiFi.TYPE_WPA -> "WPA"
+                            Barcode.WiFi.TYPE_WEP -> "WEP"
+                            else -> "Open"
+                        }
+                        QRResult.WiFi(
+                            ssid = wifi?.ssid ?: "",
+                            password = wifi?.password ?: "",
+                            encryptionType = encType
+                        )
                     }
-                    QRResult.WiFi(
-                        ssid = wifi?.ssid ?: "",
-                        password = wifi?.password ?: "",
-                        encryptionType = encType
-                    )
-                }
-                else -> {
-                    val typeName = when (barcode.valueType) {
-                        Barcode.TYPE_CONTACT_INFO -> "Contact"
-                        Barcode.TYPE_CALENDAR_EVENT -> "Calendar Event"
-                        Barcode.TYPE_GEO -> "Location"
-                        Barcode.TYPE_ISBN -> "ISBN"
-                        Barcode.TYPE_PRODUCT -> "Product"
-                        Barcode.TYPE_DRIVER_LICENSE -> "Driver Licence"
-                        else -> "Barcode"
+                    else -> {
+                        val typeName = when (barcode.valueType) {
+                            Barcode.TYPE_CONTACT_INFO -> "Contact"
+                            Barcode.TYPE_CALENDAR_EVENT -> "Calendar Event"
+                            Barcode.TYPE_GEO -> "Location"
+                            Barcode.TYPE_ISBN -> "ISBN"
+                            Barcode.TYPE_PRODUCT -> "Product"
+                            Barcode.TYPE_DRIVER_LICENSE -> "Driver Licence"
+                            else -> "Barcode"
+                        }
+                        QRResult.Other(raw, typeName)
                     }
-                    QRResult.Other(raw, typeName)
                 }
             }
+
+            val parsed = barcodes.map { parseBarcode(it) }
+
+            val result = if (parsed.size == 1) parsed.first()
+                         else QRResult.Multiple(parsed)
 
             continuation.resume(result)
         }

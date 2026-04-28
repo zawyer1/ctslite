@@ -52,6 +52,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -455,6 +456,199 @@ fun QRResultSheet(
                     Text("Copy")
                 }
             }
+
+            is QRResult.Multiple -> {
+                Text(
+                    text = "${result.results.size} codes detected",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+                result.results.forEachIndexed { index, singleResult ->
+                    if (index > 0) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 16.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant
+                        )
+                    }
+                    Text(
+                        text = "${index + 1} of ${result.results.size}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    // Recursively render each result using the same sheet but
+                    // passing the individual result — achieved by calling the
+                    // when branches inline via a helper
+                    QRSingleResult(
+                        result = singleResult,
+                        context = context,
+                        onShowIntentDialog = { showIntentConfirmDialog = true }
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Renders a single QRResult inline — used by the Multiple handler to display
+ * each detected barcode as a card within the scrollable list.
+ * intent:// results in this context share the parent's dialog state.
+ */
+@Composable
+private fun QRSingleResult(
+    result: QRResult,
+    context: android.content.Context,
+    onShowIntentDialog: () -> Unit
+) {
+    when (result) {
+        is QRResult.Url -> {
+            QRTypeLabel("URL")
+            QRValueCard(result.url)
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = {
+                        try {
+                            context.startActivity(
+                                Intent(Intent.ACTION_VIEW, result.url.toUri())
+                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            )
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "No app found to open this URL", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.OpenInNew, null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Open")
+                }
+                OutlinedButton(
+                    onClick = { copyToClipboard(context, result.url, "URL") },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.Default.ContentCopy, null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Copy")
+                }
+            }
+        }
+        is QRResult.IntentUri -> {
+            QRTypeLabel("App Intent")
+            QRValueCard(result.raw)
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = onShowIntentDialog,
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.OpenInNew, null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Open")
+                }
+                OutlinedButton(
+                    onClick = { copyToClipboard(context, result.raw, "Intent URI") },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.Default.ContentCopy, null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Copy")
+                }
+            }
+        }
+        is QRResult.Phone -> {
+            QRTypeLabel("Phone Number")
+            QRValueCard(result.number)
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = {
+                        try {
+                            context.startActivity(
+                                Intent(Intent.ACTION_DIAL, "tel:${result.number}".toUri())
+                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            )
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "Could not open dialler", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.Default.Phone, null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Dial")
+                }
+                OutlinedButton(
+                    onClick = { copyToClipboard(context, result.number, "Phone number") },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.Default.ContentCopy, null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Copy")
+                }
+            }
+        }
+        is QRResult.Email -> {
+            QRTypeLabel("Email Address")
+            QRValueCard(result.address)
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = { copyToClipboard(context, result.address, "Email address") },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.ContentCopy, null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Copy")
+            }
+        }
+        is QRResult.WiFi -> {
+            QRTypeLabel("Wi-Fi Network")
+            QRValueCard("SSID: ${result.ssid}\nSecurity: ${result.encryptionType}")
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = {
+                    val credentials = "SSID: ${result.ssid}\nPassword: ${result.password}\nSecurity: ${result.encryptionType}"
+                    copyToClipboard(context, credentials, "Wi-Fi credentials")
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.ContentCopy, null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Copy Credentials")
+            }
+        }
+        is QRResult.PlainText -> {
+            QRTypeLabel("Text")
+            QRValueCard(result.text)
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = { copyToClipboard(context, result.text, "Text") },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.ContentCopy, null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Copy")
+            }
+        }
+        is QRResult.Other -> {
+            QRTypeLabel(result.typeName)
+            QRValueCard(result.raw)
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = { copyToClipboard(context, result.raw, result.typeName) },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.ContentCopy, null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Copy")
+            }
+        }
+        else -> {
+            // NotFound, Error, Multiple — not expected in this context
+            QRValueCard(result.toString())
         }
     }
 }

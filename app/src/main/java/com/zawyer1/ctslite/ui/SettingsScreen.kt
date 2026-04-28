@@ -41,10 +41,12 @@ import com.zawyer1.ctslite.utils.UIPreferences
 @Composable
 fun SettingsScreen(
     uiPreferences: UIPreferences,
+    squareSelection: Boolean,
+    onSquareSelectionChange: (Boolean) -> Unit,
     onDismissRequest: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    
+
     var showFriendlyMessages by remember { mutableStateOf(uiPreferences.isShowFriendlyMessages()) }
     val engineOrder = remember {
         mutableStateListOf(*uiPreferences.getOrderedSearchEngines().toTypedArray())
@@ -78,18 +80,26 @@ fun SettingsScreen(
                 ),
                 color = MaterialTheme.colorScheme.onSurface
             )
-            
+
             Spacer(modifier = Modifier.height(24.dp))
 
             // General Section
             SettingsSectionHeader(title = "General")
-            
+
             SettingsToggleItem(
                 title = "Friendly Messages",
                 subtitle = "Show random greeting messages on trigger",
                 icon = Icons.Default.ChatBubbleOutline,
                 checked = showFriendlyMessages,
                 onCheckedChange = { showFriendlyMessages = it }
+            )
+
+            SettingsToggleItem(
+                title = "Rectangle Selection",
+                subtitle = "Draw a rectangle instead of a freehand selection",
+                icon = Icons.Default.CropFree,
+                checked = squareSelection,
+                onCheckedChange = onSquareSelectionChange
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -187,9 +197,9 @@ fun SettingsToggleItem(
                 tint = MaterialTheme.colorScheme.onPrimaryContainer
             )
         }
-        
+
         Spacer(modifier = Modifier.width(16.dp))
-        
+
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
@@ -201,7 +211,7 @@ fun SettingsToggleItem(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        
+
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
@@ -232,7 +242,7 @@ fun EngineOrderItem(
             style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
             modifier = Modifier.weight(1f)
         )
-        
+
         IconButton(
             onClick = onMoveUp,
             enabled = !isFirst
@@ -243,7 +253,7 @@ fun EngineOrderItem(
                 tint = if (!isFirst) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
             )
         }
-        
+
         IconButton(
             onClick = onMoveDown,
             enabled = !isLast

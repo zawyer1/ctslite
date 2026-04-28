@@ -151,11 +151,13 @@ fun CircleToSearchScreen(
     var isDarkMode by remember { mutableStateOf(uiPreferences.isDarkMode()) }
     var showGradientBorder by remember { mutableStateOf(uiPreferences.isShowGradientBorder()) }
     var searchMode by remember { mutableStateOf(uiPreferences.getSearchMode()) }
+    var isSquareSelection by remember { mutableStateOf(uiPreferences.isSquareSelection()) }
 
     LaunchedEffect(isDarkMode) { uiPreferences.setDarkMode(isDarkMode) }
     LaunchedEffect(showGradientBorder) { uiPreferences.setShowGradientBorder(showGradientBorder) }
     LaunchedEffect(desktopModeEngines) { uiPreferences.setDesktopModeEngines(desktopModeEngines) }
     LaunchedEffect(searchMode) { uiPreferences.setSearchMode(searchMode) }
+    LaunchedEffect(isSquareSelection) { uiPreferences.setSquareSelection(isSquareSelection) }
 
     // WebView cache — SearchResultsSheet writes, BackHandler + header menu reads
     val webViews = remember { mutableMapOf<SearchEngine, WebView>() }
@@ -269,6 +271,7 @@ fun CircleToSearchScreen(
             if (screenshot != null) {
                 DrawingLayer(
                     screenshot = screenshot,
+                    isSquareSelection = isSquareSelection,
                     onSelectionComplete = { croppedBitmap, _ ->
                         selectedBitmap = croppedBitmap
                     }
@@ -420,6 +423,8 @@ fun CircleToSearchScreen(
             if (showSettingsScreen) {
                 SettingsScreen(
                     uiPreferences = uiPreferences,
+                    squareSelection = isSquareSelection,
+                    onSquareSelectionChange = { isSquareSelection = it },
                     onDismissRequest = { showSettingsScreen = false }
                 )
             }
